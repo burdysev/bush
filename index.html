@@ -1,0 +1,2191 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0a0d14">
+<title>Улыбка ПМ — Симулятор завода</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg-0:#0a0d14; --bg-1:#11151f; --bg-2:#1a2030; --bg-3:#232b3e;
+  --border:rgba(255,255,255,0.07); --border-hi:rgba(255,255,255,0.14);
+  --text:#eef3fc; --muted:#7a8699; --dim:#4a556a;
+  --gold:#ffc440; --gold-d:#d99a1a; --gold-l:#ffe4a3;
+  --green:#34d399; --red:#f87171; --blue:#60a5fa; --purple:#c084fc; --cyan:#22d3ee;
+  --r-sm:10px; --r-md:14px;
+}
+html,body{
+  width:100%;height:100%;overflow:hidden;color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+  touch-action:manipulation;overscroll-behavior:none;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(255,196,64,0.07), transparent 45%),
+    radial-gradient(circle at 85% 100%, rgba(96,165,250,0.06), transparent 45%),
+    var(--bg-0);
+}
+#app{display:flex;flex-direction:column;height:100%;max-width:500px;margin:0 auto;position:relative;}
+
+#header{
+  padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 12px;
+  border-bottom:1px solid var(--border);background:rgba(17,21,31,0.85);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  flex-shrink:0;position:relative;z-index:10;
+}
+.header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;}
+.brand{display:flex;align-items:center;gap:8px;min-width:0;}
+.brand-icon{font-size:24px;filter:drop-shadow(0 2px 10px rgba(255,196,64,0.6));}
+.brand-name{
+  font-size:19px;font-weight:800;letter-spacing:-0.02em;
+  background:linear-gradient(135deg,#ffe4a3,#ffc440 50%,#d99a1a);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;white-space:nowrap;
+}
+.rank-badge{
+  display:flex;align-items:center;gap:6px;
+  background:linear-gradient(135deg,rgba(255,196,64,0.15),rgba(255,196,64,0.05));
+  border:1px solid rgba(255,196,64,0.4);border-radius:20px;
+  padding:5px 11px;flex-shrink:0;
+}
+.rank-badge.up{animation:badgeUp 0.8s;}
+.rank-badge.down{animation:badgeDown 0.6s;}
+@keyframes badgeUp{0%{transform:scale(1);}30%{transform:scale(1.15);box-shadow:0 0 24px rgba(52,211,153,0.7);}100%{transform:scale(1);}}
+@keyframes badgeDown{0%{transform:scale(1);}30%{transform:scale(0.9);box-shadow:0 0 24px rgba(248,113,113,0.7);}100%{transform:scale(1);}}
+.rank-icon{font-size:15px;}
+.rank-text{font-size:15px;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums;}
+.rank-timer{
+  font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;
+  padding-left:6px;margin-left:2px;border-left:1px solid rgba(255,196,64,0.3);
+  min-width:32px;text-align:center;transition:color 0.3s;
+}
+.rank-timer.soon{color:var(--gold);font-weight:700;}
+.rank-timer.urgent{color:var(--red);font-weight:800;animation:timerUrgent 1s infinite;}
+@keyframes timerUrgent{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+.stats-row{display:flex;gap:8px;}
+.stat{
+  flex:1;display:flex;align-items:center;gap:7px;
+  background:rgba(255,255,255,0.03);border:1px solid var(--border);
+  border-radius:var(--r-sm);padding:7px 11px;
+  font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;min-width:0;
+  position:relative;overflow:hidden;transition:background 0.3s,border-color 0.3s;
+}
+.stat.flash{background:rgba(255,196,64,0.18);border-color:rgba(255,196,64,0.5);}
+.stat-icon{font-size:15px;flex-shrink:0;}
+.stat-label{font-size:9px;color:var(--muted);font-weight:600;margin-left:auto;text-transform:uppercase;letter-spacing:0.07em;}
+
+.event-banner{
+  display:flex;align-items:center;gap:10px;padding:0 14px;
+  font-size:13px;font-weight:700;position:relative;overflow:hidden;
+  height:0;transition:height 0.35s cubic-bezier(0.2,1,0.5,1);flex-shrink:0;
+}
+.event-banner.show{height:44px;}
+.event-banner::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:var(--ev-color,var(--gold));box-shadow:0 0 12px var(--ev-color,var(--gold));
+}
+.event-banner.positive{background:linear-gradient(90deg,rgba(52,211,153,0.14),rgba(52,211,153,0.02));}
+.event-banner.negative{background:linear-gradient(90deg,rgba(248,113,113,0.14),rgba(248,113,113,0.02));}
+.event-banner .ev-icon{font-size:18px;}
+.event-banner .ev-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.event-banner .ev-timer{
+  font-size:12px;font-variant-numeric:tabular-nums;
+  padding:2px 8px;border-radius:10px;background:rgba(0,0,0,0.35);
+  color:var(--ev-color,var(--gold));
+}
+
+#content{flex:1;overflow-y:auto;padding:12px;-webkit-overflow-scrolling:touch;position:relative;}
+.tab{display:none;}
+.tab.active{display:block;animation:fadeSlide 0.25s cubic-bezier(0.2,1,0.5,1);}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+.lines-container{display:flex;flex-direction:column;gap:10px;}
+.line-card{
+  background:linear-gradient(135deg,rgba(35,43,62,0.9),rgba(26,32,48,0.9));
+  border:1px solid var(--border);border-left:3px solid var(--accent,var(--gold));
+  border-radius:var(--r-md);padding:13px;position:relative;overflow:hidden;
+  box-shadow:0 4px 20px rgba(0,0,0,0.35);transition:all 0.25s;
+}
+.line-card::before{
+  content:'';position:absolute;top:0;right:0;width:120px;height:120px;
+  background:radial-gradient(circle,var(--accent,var(--gold)) 0%,transparent 70%);
+  opacity:0.08;pointer-events:none;transform:translate(30%,-30%);
+}
+.line-card.locked{opacity:0.85;border-left-color:var(--dim);padding:15px 13px;}
+.line-card.locked::before{display:none;}
+.line-head{display:flex;align-items:center;gap:11px;margin-bottom:10px;position:relative;z-index:1;}
+.line-icon{font-size:30px;flex-shrink:0;filter:drop-shadow(0 3px 8px rgba(0,0,0,0.4));}
+.line-title{flex:1;min-width:0;}
+.line-name{font-size:15px;font-weight:800;letter-spacing:-0.01em;}
+.line-meta{font-size:11px;color:var(--muted);display:flex;gap:10px;margin-top:3px;font-weight:600;}
+.line-stock-box{text-align:right;flex-shrink:0;}
+.line-stock-val{
+  font-size:22px;font-weight:900;color:var(--gold);
+  font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-0.02em;
+  text-shadow:0 2px 8px rgba(255,196,64,0.35);
+}
+.line-stock-label{font-size:10px;color:var(--muted);margin-top:3px;font-weight:600;}
+.progress-bar{height:6px;background:rgba(0,0,0,0.4);border-radius:3px;overflow:hidden;margin-bottom:11px;position:relative;z-index:1;}
+.progress-fill{
+  height:100%;background:linear-gradient(90deg,var(--accent,var(--gold)),var(--gold-l));
+  transform-origin:left;transform:scaleX(0);border-radius:3px;
+  transition:transform 0.08s linear;box-shadow:0 0 10px var(--accent,var(--gold));
+  position:relative;
+}
+.progress-fill::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.5),transparent);
+  animation:progressShine 2s infinite;
+}
+@keyframes progressShine{0%{transform:translateX(-100%);}100%{transform:translateX(100%);}}
+.line-actions{display:flex;gap:7px;position:relative;z-index:1;}
+.btn-sell{
+  flex:2;background:linear-gradient(180deg,#4ade80,#22c55e);border:none;
+  color:#051b0d;font-weight:800;font-size:13px;padding:11px;border-radius:var(--r-sm);
+  cursor:pointer;font-family:inherit;transition:transform 0.1s,filter 0.15s;
+  box-shadow:0 3px 12px rgba(34,197,94,0.35),inset 0 1px 0 rgba(255,255,255,0.35);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.btn-sell:active{transform:scale(0.96);filter:brightness(1.15);}
+.btn-sell:disabled{background:rgba(255,255,255,0.05);color:var(--dim);box-shadow:none;cursor:not-allowed;}
+.btn-upg{
+  flex:1;background:linear-gradient(180deg,rgba(255,255,255,0.09),rgba(255,255,255,0.03));
+  border:1px solid var(--border-hi);color:var(--text);
+  font-weight:800;font-size:12px;padding:11px 6px;border-radius:var(--r-sm);
+  cursor:pointer;font-family:inherit;font-variant-numeric:tabular-nums;
+  transition:all 0.12s;white-space:nowrap;overflow:hidden;
+}
+.btn-upg:active{transform:scale(0.96);background:rgba(255,196,64,0.15);border-color:rgba(255,196,64,0.4);}
+.btn-upg:disabled{opacity:0.3;cursor:not-allowed;}
+
+.line-locked{display:flex;flex-direction:column;gap:10px;position:relative;z-index:1;}
+.line-locked-row{display:flex;align-items:center;gap:12px;}
+.line-locked-info{flex:1;min-width:0;}
+.line-unlock{font-size:11px;color:var(--muted);margin-top:3px;font-weight:600;}
+.locked-progress{height:5px;background:rgba(0,0,0,0.4);border-radius:3px;overflow:hidden;}
+.locked-progress-fill{
+  height:100%;background:linear-gradient(90deg,var(--purple),var(--cyan));
+  border-radius:3px;transform-origin:left;transform:scaleX(0);
+  transition:transform 0.3s;box-shadow:0 0 8px rgba(192,132,252,0.5);
+}
+.btn-unlock{
+  width:100%;background:linear-gradient(180deg,var(--purple),#a855f7);
+  border:none;color:white;font-weight:800;font-size:13px;padding:11px;
+  border-radius:var(--r-sm);cursor:pointer;font-family:inherit;
+  transition:transform 0.1s,filter 0.15s;
+  box-shadow:0 3px 12px rgba(168,85,247,0.35),inset 0 1px 0 rgba(255,255,255,0.25);
+  font-variant-numeric:tabular-nums;
+}
+.btn-unlock:active{transform:scale(0.97);filter:brightness(1.15);}
+.btn-unlock:disabled{background:rgba(255,255,255,0.05);color:var(--dim);box-shadow:none;cursor:not-allowed;}
+.btn-unlock.ready{animation:unlockPulse 1.6s infinite;background:linear-gradient(180deg,#a78bfa,#7c3aed);}
+@keyframes unlockPulse{
+  0%,100%{box-shadow:0 3px 12px rgba(168,85,247,0.35);}
+  50%{box-shadow:0 3px 20px rgba(168,85,247,0.7),0 0 24px rgba(168,85,247,0.4);}
+}
+
+.upgrade-section{margin-bottom:18px;}
+.section-title{
+  font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;
+  letter-spacing:0.1em;margin-bottom:10px;padding-left:4px;
+  display:flex;align-items:center;gap:6px;
+}
+.upgrade-card{
+  display:flex;align-items:center;gap:13px;
+  background:linear-gradient(135deg,rgba(35,43,62,0.9),rgba(26,32,48,0.9));
+  border:1px solid var(--border);border-radius:var(--r-md);padding:13px;
+  margin-bottom:9px;box-shadow:0 4px 20px rgba(0,0,0,0.35);
+}
+.upg-icon{font-size:28px;flex-shrink:0;}
+.upg-info{flex:1;min-width:0;}
+.upg-name{font-size:14px;font-weight:800;}
+.upg-desc{font-size:11px;color:var(--muted);margin-top:3px;font-weight:600;}
+.upg-buy{
+  background:linear-gradient(180deg,var(--gold-l),var(--gold));border:none;
+  color:#1a1105;font-weight:800;font-size:12px;padding:10px 14px;
+  border-radius:var(--r-sm);cursor:pointer;font-family:inherit;
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+  transition:transform 0.1s,filter 0.15s;
+  box-shadow:0 3px 12px rgba(255,196,64,0.4),inset 0 1px 0 rgba(255,255,255,0.5);
+}
+.upg-buy:active{transform:scale(0.95);filter:brightness(1.1);}
+.upg-buy:disabled{background:rgba(255,255,255,0.05);color:var(--dim);box-shadow:none;cursor:not-allowed;}
+
+.product-row{
+  display:flex;align-items:center;gap:11px;padding:11px 13px;
+  background:rgba(35,43,62,0.6);border:1px solid var(--border);
+  border-radius:var(--r-sm);margin-bottom:7px;font-size:13px;
+}
+.product-row.locked{opacity:0.7;}
+.product-row.unlocked{background:linear-gradient(90deg,rgba(52,211,153,0.08),rgba(35,43,62,0.6));border-color:rgba(52,211,153,0.25);}
+.product-icon{font-size:20px;}
+.product-name{flex:1;font-weight:700;}
+.product-status{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;font-weight:700;}
+.product-row.unlocked .product-status{color:var(--green);}
+
+.inv-tabs{
+  display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+.inv-tabs::-webkit-scrollbar{display:none;}
+.inv-tab-btn{
+  flex-shrink:0;padding:8px 13px;border-radius:20px;
+  background:rgba(255,255,255,0.04);border:1px solid var(--border);
+  color:var(--muted);font-size:12px;font-weight:700;font-family:inherit;
+  cursor:pointer;transition:all 0.2s;white-space:nowrap;
+}
+.inv-tab-btn.active{
+  background:linear-gradient(135deg,rgba(255,196,64,0.18),rgba(255,196,64,0.05));
+  border-color:rgba(255,196,64,0.55);color:var(--gold);
+  box-shadow:0 2px 12px rgba(255,196,64,0.25);
+}
+.inv-tab-btn .badge{
+  display:inline-block;background:var(--green);color:#051b0d;
+  border-radius:8px;padding:1px 5px;font-size:9px;font-weight:900;margin-left:4px;
+}
+
+.inv-card{
+  background:linear-gradient(135deg,rgba(35,43,62,0.9),rgba(26,32,48,0.9));
+  border:1px solid var(--border);border-radius:var(--r-md);padding:12px;
+  margin-bottom:9px;box-shadow:0 4px 20px rgba(0,0,0,0.35);
+}
+.inv-card.owned{border-color:rgba(255,196,64,0.4);background:linear-gradient(135deg,rgba(255,196,64,0.06),rgba(26,32,48,0.9));}
+.inv-card.highlight{border-color:rgba(52,211,153,0.5);box-shadow:0 0 30px rgba(52,211,153,0.2);}
+
+.asset-row{display:flex;align-items:center;gap:11px;margin-bottom:8px;}
+.asset-icon{
+  width:42px;height:42px;border-radius:11px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--a-color,#60a5fa),rgba(0,0,0,0.4));
+  font-size:20px;font-weight:900;color:white;
+  box-shadow:0 3px 10px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.3);
+}
+.asset-info{flex:1;min-width:0;}
+.asset-ticker{font-size:13px;font-weight:800;letter-spacing:0.02em;}
+.asset-name{font-size:11px;color:var(--muted);margin-top:1px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.asset-price-box{text-align:right;flex-shrink:0;}
+.asset-price{font-size:15px;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums;}
+.asset-change{font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px;}
+.asset-change.up{color:var(--green);}
+.asset-change.down{color:var(--red);}
+
+.asset-holding{
+  display:flex;justify-content:space-between;font-size:11px;font-weight:700;
+  padding:6px 10px;background:rgba(255,196,64,0.08);border-radius:8px;
+  border:1px solid rgba(255,196,64,0.2);color:var(--gold);
+  font-variant-numeric:tabular-nums;margin-top:2px;margin-bottom:8px;
+}
+
+.asset-actions{display:flex;gap:6px;}
+.btn-trade{
+  flex:1;background:linear-gradient(180deg,rgba(255,255,255,0.09),rgba(255,255,255,0.03));
+  border:1px solid var(--border-hi);color:var(--text);
+  font-weight:800;font-size:12px;padding:9px;border-radius:8px;
+  cursor:pointer;font-family:inherit;transition:all 0.12s;
+}
+.btn-trade.buy{background:linear-gradient(180deg,#34d399,#059669);border:none;color:#051b0d;box-shadow:0 3px 10px rgba(52,211,153,0.3);}
+.btn-trade.sell{background:linear-gradient(180deg,#f87171,#dc2626);border:none;color:white;box-shadow:0 3px 10px rgba(248,113,113,0.3);}
+.btn-trade.info{background:linear-gradient(180deg,#60a5fa,#2563eb);border:none;color:white;}
+.btn-trade:active{transform:scale(0.96);filter:brightness(1.1);}
+.btn-trade:disabled{opacity:0.35;cursor:not-allowed;}
+
+.position-card{
+  background:linear-gradient(135deg,rgba(35,43,62,0.9),rgba(26,32,48,0.9));
+  border:1px solid rgba(255,196,64,0.35);border-radius:var(--r-md);padding:12px;
+  margin-bottom:9px;
+}
+.position-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.position-title{font-size:13px;font-weight:800;}
+.position-payout{font-size:13px;font-weight:900;color:var(--green);font-variant-numeric:tabular-nums;}
+.position-progress{height:6px;background:rgba(0,0,0,0.4);border-radius:3px;overflow:hidden;margin-bottom:6px;}
+.position-progress-fill{
+  height:100%;background:linear-gradient(90deg,var(--green),#22c55e);
+  border-radius:3px;transform-origin:left;box-shadow:0 0 8px rgba(52,211,153,0.5);
+}
+.position-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums;}
+
+.savings-balance{
+  font-size:28px;font-weight:900;color:var(--gold);font-variant-numeric:tabular-nums;
+  text-align:center;padding:8px 0;text-shadow:0 2px 16px rgba(255,196,64,0.4);
+}
+.savings-hint{text-align:center;font-size:11px;color:var(--muted);margin-bottom:12px;font-weight:600;}
+.savings-preview{
+  background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.25);
+  border-radius:10px;padding:10px;font-size:12px;color:var(--green);font-weight:700;
+  text-align:center;margin-bottom:12px;
+}
+
+.empty-state{
+  text-align:center;padding:32px 20px;color:var(--muted);font-size:13px;font-weight:600;
+  line-height:1.5;
+}
+.empty-state .empty-emoji{font-size:42px;margin-bottom:10px;opacity:0.5;display:block;}
+
+.rating-list{display:flex;flex-direction:column;gap:5px;}
+.rating-row{
+  display:flex;align-items:center;gap:10px;padding:11px 13px;
+  background:rgba(35,43,62,0.6);border:1px solid var(--border);
+  border-radius:var(--r-sm);font-size:13px;position:relative;overflow:hidden;
+  transition:all 0.35s cubic-bezier(0.2,1,0.5,1);
+}
+.rating-row.player{
+  background:linear-gradient(90deg,rgba(255,196,64,0.22),rgba(255,196,64,0.04));
+  border-color:rgba(255,196,64,0.55);
+  box-shadow:0 0 28px rgba(255,196,64,0.22);
+  padding:13px;animation:playerPulse 3s ease-in-out infinite;
+}
+@keyframes playerPulse{
+  0%,100%{box-shadow:0 0 28px rgba(255,196,64,0.22);}
+  50%{box-shadow:0 0 40px rgba(255,196,64,0.4);}
+}
+.rating-row.grew-up{animation:grewUp 1.2s;}
+.rating-row.grew-down{animation:grewDown 1.2s;}
+@keyframes grewUp{0%{background:rgba(52,211,153,0.3);border-color:rgba(52,211,153,0.7);}100%{background:rgba(35,43,62,0.6);border-color:var(--border);}}
+@keyframes grewDown{0%{background:rgba(248,113,113,0.3);border-color:rgba(248,113,113,0.7);}100%{background:rgba(35,43,62,0.6);border-color:var(--border);}}
+.rating-rank{width:46px;text-align:center;font-weight:900;color:var(--dim);font-variant-numeric:tabular-nums;font-size:13px;flex-shrink:0;}
+.rating-row.player .rating-rank{color:var(--gold);text-shadow:0 0 10px rgba(255,196,64,0.6);font-size:14px;}
+.rating-name{flex:1;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rating-trend{font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;padding:2px 6px;border-radius:6px;flex-shrink:0;margin-right:2px;}
+.rating-trend.up{color:var(--green);background:rgba(52,211,153,0.12);}
+.rating-trend.down{color:var(--red);background:rgba(248,113,113,0.12);}
+.rating-score{font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums;font-size:12px;flex-shrink:0;}
+
+#tabbar{
+  display:flex;border-top:1px solid var(--border);background:rgba(17,21,31,0.95);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  padding-bottom:env(safe-area-inset-bottom,0);flex-shrink:0;position:relative;
+}
+.tab-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:9px 4px 10px;background:transparent;border:none;color:var(--muted);
+  font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;
+  transition:color 0.2s;position:relative;letter-spacing:0.02em;
+}
+.tab-btn span:first-child{font-size:22px;transition:transform 0.25s;filter:grayscale(1) opacity(0.6);}
+.tab-btn.active{color:var(--gold);}
+.tab-btn.active span:first-child{transform:scale(1.15);filter:none;filter:drop-shadow(0 2px 8px rgba(255,196,64,0.5));}
+.tab-btn.active::after{
+  content:'';position:absolute;top:0;left:22%;right:22%;height:2.5px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);
+  border-radius:0 0 3px 3px;
+}
+.tab-btn .inv-badge{
+  position:absolute;top:4px;right:22%;
+  background:var(--red);color:white;font-size:9px;font-weight:900;
+  min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  padding:0 4px;box-shadow:0 2px 6px rgba(0,0,0,0.4);
+}
+
+#fx{position:fixed;inset:0;pointer-events:none;z-index:99;}
+
+.toast{
+  position:fixed;top:150px;left:50%;transform:translateX(-50%);
+  background:rgba(26,32,48,0.97);color:var(--text);
+  padding:13px 22px;border-radius:14px;font-size:13px;font-weight:700;
+  z-index:150;animation:toastAnim 3.2s forwards;
+  border:1px solid var(--gold);box-shadow:0 12px 40px rgba(0,0,0,0.6),0 0 30px rgba(255,196,64,0.2);
+  max-width:88vw;text-align:center;line-height:1.4;
+}
+.toast.warn{border-color:var(--red);}
+.toast.success{border-color:var(--green);}
+@keyframes toastAnim{
+  0%{opacity:0;transform:translate(-50%,-20px) scale(0.9);}
+  8%{opacity:1;transform:translate(-50%,0) scale(1);}
+  88%{opacity:1;transform:translate(-50%,0) scale(1);}
+  100%{opacity:0;transform:translate(-50%,-10px) scale(0.95);}
+}
+
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;
+  align-items:center;justify-content:center;z-index:200;padding:24px;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);animation:fadeIn 0.4s;
+  overflow-y:auto;
+}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+.modal-card{
+  background:linear-gradient(135deg,#232b3e,#11151f);border:1.5px solid var(--gold);
+  border-radius:22px;padding:26px 20px 22px;text-align:center;max-width:340px;width:100%;
+  box-shadow:0 24px 80px rgba(255,196,64,0.3),0 0 60px rgba(0,0,0,0.8);
+  animation:popIn 0.55s cubic-bezier(0.2,1.5,0.5,1);margin:auto;
+}
+@keyframes popIn{from{transform:scale(0.7);opacity:0;}to{transform:scale(1);opacity:1;}}
+.modal-emoji{font-size:52px;margin-bottom:10px;filter:drop-shadow(0 4px 20px var(--gold));display:inline-block;}
+.modal-title{
+  font-size:20px;font-weight:900;margin-bottom:8px;
+  background:linear-gradient(135deg,#ffe4a3,#ffc440);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.modal-text{font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.5;font-weight:500;}
+.modal-stats{
+  background:rgba(255,196,64,0.08);border:1px solid rgba(255,196,64,0.25);
+  border-radius:12px;padding:12px;margin-bottom:16px;font-size:13px;font-weight:600;
+}
+.modal-stats strong{
+  color:var(--gold);font-size:18px;font-weight:900;
+  display:block;margin-top:4px;font-variant-numeric:tabular-nums;
+}
+.modal-btn{
+  background:linear-gradient(180deg,var(--gold-l),var(--gold));border:none;
+  color:#1a1105;font-weight:900;font-size:14px;padding:13px 32px;
+  border-radius:12px;cursor:pointer;font-family:inherit;
+  transition:transform 0.1s,filter 0.15s;
+  box-shadow:0 6px 20px rgba(255,196,64,0.5),inset 0 1px 0 rgba(255,255,255,0.6);
+  width:100%;letter-spacing:0.02em;
+}
+.modal-btn:active{transform:scale(0.96);filter:brightness(1.1);}
+.modal-btn.ghost{background:rgba(255,255,255,0.06);color:var(--text);box-shadow:none;border:1px solid var(--border-hi);margin-top:8px;}
+
+.trade-slider{width:100%;margin:16px 0 8px;accent-color:var(--gold);height:6px;}
+.trade-amount{
+  font-size:28px;font-weight:900;color:var(--gold);
+  font-variant-numeric:tabular-nums;margin:6px 0;
+  text-shadow:0 2px 12px rgba(255,196,64,0.5);
+}
+.trade-total{font-size:13px;color:var(--muted);font-weight:700;margin-bottom:6px;}
+.trade-quick{display:flex;gap:6px;margin-bottom:14px;justify-content:center;flex-wrap:wrap;}
+.trade-quick button{
+  background:rgba(255,255,255,0.06);border:1px solid var(--border-hi);color:var(--text);
+  font-weight:800;font-size:12px;padding:7px 12px;border-radius:8px;
+  cursor:pointer;font-family:inherit;transition:all 0.12s;
+}
+.trade-quick button:active{background:rgba(255,196,64,0.15);}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header id="header">
+    <div class="header-top">
+      <div class="brand">
+        <div class="brand-icon">😊</div>
+        <div class="brand-name">Улыбка ПМ</div>
+      </div>
+      <div class="rank-badge" id="rankBadge">
+        <div class="rank-icon">🏆</div>
+        <div class="rank-text">#<span id="rankVal">100</span></div>
+        <div class="rank-timer" id="rankTimer">3:00</div>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat" id="moneyStat">
+        <span class="stat-icon">💰</span>
+        <span id="moneyVal">3.00M</span>
+      </div>
+      <div class="stat" id="totalStat">
+        <span class="stat-icon">📊</span>
+        <span id="totalVal">0</span>
+        <span class="stat-label">оборот</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="event-banner" id="eventBanner">
+    <span class="ev-icon" id="evIcon">📈</span>
+    <span class="ev-text" id="evText"></span>
+    <span class="ev-timer" id="evTimer"></span>
+  </div>
+
+  <main id="content">
+    <section class="tab active" id="tab-factory">
+      <div class="lines-container" id="linesContainer"></div>
+    </section>
+    <section class="tab" id="tab-upgrades">
+      <div class="upgrades-container" id="upgradesContainer"></div>
+    </section>
+    <section class="tab" id="tab-invest">
+      <div class="inv-tabs" id="invTabs"></div>
+      <div id="invContent"></div>
+    </section>
+    <section class="tab" id="tab-rating">
+      <div class="rating-container" id="ratingContainer"></div>
+    </section>
+  </main>
+
+  <nav id="tabbar">
+    <button class="tab-btn active" data-tab="factory"><span>🏭</span><span>Завод</span></button>
+    <button class="tab-btn" data-tab="upgrades"><span>⭐</span><span>Апгрейды</span></button>
+    <button class="tab-btn" data-tab="invest"><span>💼</span><span>Инвест</span><span class="inv-badge" id="invBadge" style="display:none">0</span></button>
+    <button class="tab-btn" data-tab="rating"><span>🏆</span><span>Рейтинг</span></button>
+  </nav>
+</div>
+
+<canvas id="fx"></canvas>
+
+<script>
+(() => {
+'use strict';
+
+/* ============================================================
+   КОНСТАНТЫ
+   ============================================================ */
+const START_MONEY = 3_000_000;
+const GROWTH_INTERVAL = 180;
+const CRYPTO_UPDATE_INTERVAL = 30000;
+const SAVINGS_RATE_PER_MIN = 0.003;
+
+const PRODUCTS = [
+  { id:'bag',       name:'Пакеты',     icon:'🛍️', baseTime:2,  basePrice:1000,      unlockCost:500_000,       color:'#4ade80' },
+  { id:'bottle',    name:'Бутылки',    icon:'🍶', baseTime:3,  basePrice:10000,     unlockCost:3_000_000,     color:'#60a5fa' },
+  { id:'pipe',      name:'Трубы',      icon:'🔩', baseTime:5,  basePrice:100000,    unlockCost:20_000_000,    color:'#a78bfa' },
+  { id:'container', name:'Контейнеры', icon:'📦', baseTime:8,  basePrice:1000000,   unlockCost:150_000_000,   color:'#fb923c' },
+  { id:'medical',   name:'Медизделия', icon:'💉', baseTime:12, basePrice:10000000,  unlockCost:1_000_000_000, color:'#f87171' },
+  { id:'special',   name:'Спецдетали', icon:'⚙️', baseTime:20, basePrice:100000000, unlockCost:10_000_000_000, color:'#fbbf24' }
+];
+const MAX_LEVEL = 8;
+const COST_MULT = 1.6;
+const SPEED_EFFECT = 0.3;
+const QUALITY_EFFECT = 0.2;
+const SPEED_BASE_MULT = 300;
+const QUALITY_BASE_MULT = 500;
+const COMPETITOR_COUNT = 99;
+const SAVE_KEY = 'factory_smile_v8';
+const SAVE_VERSION = 9;
+const MARKETING_COSTS = [500_000, 2_000_000, 8_000_000, 30_000_000, 100_000_000, 400_000_000, 1_500_000_000, 6_000_000_000, 25_000_000_000];
+const MARKETING_EFFECT = 0.1;
+const AUTO_SELL_COST = 500_000;
+
+const COMPETITOR_BASE_SCORES = [
+  8_500_000_000, 6_200_000_000, 4_100_000_000, 2_800_000_000, 1_900_000_000,
+  1_300_000_000, 900_000_000, 650_000_000, 450_000_000, 320_000_000
+];
+
+const PERM_FACTORIES = [
+  'Пласт-М','Упакс-Юнити','ПЗПИ','Кредо-Строй','Ураломегапласт',
+  'Хайпекс','Технология композитов','Сибур-Химпром','ГалоПолимер Пермь','ТД Урал Пак',
+  'Полипластик','Прана-Полимер','Грайф Пермь','Химпэк','Мегапласт','Кедрон',
+  'Пластмасса-Пермь','Инсайд Пласт','Пермь Урал Пласт','М-полимер','Полимер Прикамья',
+  'Урал Бэг','Аква-ПЭТ','Вирапласт','Газкомпозит','Де Люкс','Аква Релакс','Арсенал',
+  'Авангард','Архат','Базальт-Инвест','Вармпайп','Из СТП','Аква Мода','Альта','Ардеталь',
+  'Армада Плюс','Аэроплан','5 причин','Автокомпозит','Энергосила','Праймпласт',
+  'Нефтепромсервис','Уралимпорт','ТД Шинкоренко','Специнструмент','Камапромсинтез',
+  'Агрокомплект+','Экомед','Алекс-Универсал','ПКФ Полимер Прикамья','Уралпак','Пласт-Боттл',
+  'Пласт-М (ИП Лукина)','ПЭТ-Урал','Уралполимер','Камский Полимер','Прикамье Пласт',
+  'Пермский Полимер','Урал-Пласт','Завод Пластик','Полимер-Пермь','ХимПласт','Синтез-Пласт',
+  'ТехноПласт','ПромПолимер','ЭкоПласт','Стандарт-Пласт','Городской Пластик',
+  'Уральский Пластик','КамПласт','Пермский Трубник','Завод Упаковки','Индустрия Пласта',
+  'ФормПласт','ЛитПолимер','Пресс-Пласт','Экстру-Пермь','Полимер-Сервис','УралХимПласт',
+  'Завод Полимеров','ТермоПласт','Пласт-Индустрия','Полимер-Групп','Пермь-Пластик',
+  'УралПласт-Сервис','Пласт-Технология','Камский Трубный','Прикамский Пластик',
+  'Полимерные Технологии','УралПолимер-Синтез','Завод Пластмасс','Пермский Завод Полимеров',
+  'ХимПром-Пласт','Пласт-Мастер','Уральская Упаковка','Пермский Экструдер','Полимер-Прикамье',
+  'Камский Полимер-2','УралПласт-Инвест'
+];
+
+const STOCK_TICKERS = [
+  { ticker:'PLST', name:'Пласт-М',              icon:'P', color:'#22c55e', idx:0 },
+  { ticker:'UPKS', name:'Упакс-Юнити',          icon:'U', color:'#3b82f6', idx:1 },
+  { ticker:'PZPI', name:'ПЗПИ',                 icon:'Z', color:'#a855f7', idx:2 },
+  { ticker:'KRDS', name:'Кредо-Строй',          icon:'K', color:'#f97316', idx:3 },
+  { ticker:'URLM', name:'Ураломегапласт',       icon:'U', color:'#06b6d4', idx:4 },
+  { ticker:'HPX',  name:'Хайпекс',              icon:'H', color:'#ec4899', idx:5 },
+  { ticker:'TKM',  name:'Технология композитов', icon:'T', color:'#eab308', idx:6 },
+  { ticker:'SBHR', name:'Сибур-Химпром',        icon:'S', color:'#8b5cf6', idx:7 },
+  { ticker:'GLPL', name:'ГалоПолимер',          icon:'G', color:'#14b8a6', idx:8 },
+  { ticker:'URLP', name:'ТД Урал Пак',          icon:'R', color:'#f43f5e', idx:9 }
+];
+
+const IT_STOCKS = [
+  { ticker:'SBER', name:'Сбер',              icon:'S', color:'#21a038', baseScore:6_000_000_000 },
+  { ticker:'YDEX', name:'Яндекс',            icon:'Y', color:'#fc3f1d', baseScore:1_500_000_000 },
+  { ticker:'OZON', name:'Ozon',              icon:'O', color:'#005bff', baseScore:900_000_000 },
+  { ticker:'T',    name:'Т-Технологии',      icon:'T', color:'#ffdd2d', baseScore:800_000_000 },
+  { ticker:'MTSS', name:'МТС',               icon:'M', color:'#e30611', baseScore:500_000_000 },
+  { ticker:'VKCO', name:'VK',                icon:'V', color:'#0077ff', baseScore:350_000_000 },
+  { ticker:'POSI', name:'Positive Technologies', icon:'+', color:'#00a04b', baseScore:200_000_000 },
+  { ticker:'ASTR', name:'Астра',             icon:'A', color:'#e30f17', baseScore:150_000_000 },
+  { ticker:'SFTL', name:'Softline',          icon:'S', color:'#ff9c29', baseScore:100_000_000 },
+  { ticker:'HHRU', name:'HeadHunter',        icon:'H', color:'#d6001c', baseScore:80_000_000 }
+];
+
+const CRYPTO_ASSETS = [
+  { ticker:'BTC',  name:'Bitcoin',  icon:'₿', color:'#f7931a', basePrice:500_000, volatility:0.08 },
+  { ticker:'ETH',  name:'Ethereum', icon:'Ξ', color:'#627eea', basePrice:100_000, volatility:0.12 },
+  { ticker:'DOGE', name:'Dogecoin', icon:'Ð', color:'#c2a633', basePrice:5_000,   volatility:0.28 }
+];
+
+const DEPOSITS = [
+  { id:'dep1', name:'Краткосрочный', duration:180,  rate:0.05, minAmount:100_000,   icon:'⚡', color:'#34d399' },
+  { id:'dep2', name:'Стандартный',   duration:600,  rate:0.18, minAmount:1_000_000, icon:'📈', color:'#60a5fa' },
+  { id:'dep3', name:'Премиум',       duration:1800, rate:0.50, minAmount:10_000_000, icon:'💎', color:'#c084fc' }
+];
+
+const BONDS = [
+  { id:'bnd1', name:'Гособлигации',  duration:300, rate:0.08, minAmount:500_000,   icon:'🏛️', color:'#22d3ee' },
+  { id:'bnd2', name:'Корпоративные', duration:900, rate:0.30, minAmount:5_000_000, icon:'🏢', color:'#fbbf24' }
+];
+
+const EVENTS = [
+  { id:'demand',  name:'📈 Ажиотажный спрос',       icon:'📈', desc:'Цены +40% на 30с',              type:'positive', duration:30, apply:() => { state.eventPriceMult = 1.4; } },
+  { id:'crisis',  name:'📉 Кризис перепроизводства', icon:'📉', desc:'Цены −30% на 22с',              type:'negative', duration:22, apply:() => { state.eventPriceMult = 0.7; } },
+  { id:'accident',name:'⚠️ Авария у конкурента',     icon:'⚠️', desc:'Топ-завод −10% капитала',        type:'positive', instant:true, apply:() => {
+    const idx = Math.floor(Math.random() * 5);
+    competitors[idx].score *= 0.9; competitors[idx].trend = -1; competitors[idx].lastPct = -10;
+    updateStockPrices();
+  }},
+  { id:'gov',     name:'🎖️ Госзаказ',               icon:'🎖️', desc:'Бонус в казну',                  type:'positive', instant:true, apply:() => {
+    const bonus = Math.max(10000, Math.floor(state.totalRevenue * 0.08));
+    state.money += bonus; state.totalRevenue += bonus;
+    showCoinBurst(innerWidth/2, 200, 10);
+  }},
+  { id:'strike',  name:'🛢️ Скачок цен на сырьё',     icon:'🛢️', desc:'Скорость −45% на 25с',           type:'negative', duration:25, apply:() => { state.eventSpeedMult = 0.55; } },
+  { id:'lean',    name:'⚙️ Оптимизация',             icon:'⚙️', desc:'Скорость +60% на 26с',           type:'positive', duration:26, apply:() => { state.eventSpeedMult = 1.6; } },
+  { id:'investor',name:'💎 Инвестор',                icon:'💎', desc:'Инвестиции +15% оборота',         type:'positive', instant:true, apply:() => {
+    const bonus = Math.max(20000, Math.floor(state.totalRevenue * 0.15));
+    state.money += bonus; state.totalRevenue += bonus;
+  }},
+  { id:'boom',    name:'🚀 Взрывной спрос',          icon:'🚀', desc:'Цены +80% на 15с',               type:'positive', duration:15, apply:() => { state.eventPriceMult = 1.8; } },
+  { id:'export',  name:'🌍 Экспортный контракт',     icon:'🌍', desc:'Бонус +25% оборота',              type:'positive', instant:true, apply:() => {
+    const bonus = Math.max(30000, Math.floor(state.totalRevenue * 0.25));
+    state.money += bonus; state.totalRevenue += bonus;
+  }},
+  { id:'ecotax',  name:'🌱 Штраф экологов',          icon:'🌱', desc:'−8% денег',                       type:'negative', instant:true, apply:() => {
+    const penalty = Math.min(state.money * 0.08, state.totalRevenue * 0.15 + 10000);
+    state.money = Math.max(0, state.money - penalty);
+  }},
+  { id:'breakdown', name:'🔧 Поломка оборудования',   icon:'🔧', desc:'Скорость −50% на 20с',           type:'negative', duration:20, apply:() => { state.eventSpeedMult = 0.5; } },
+  { id:'grant',   name:'🏛️ Грант администрации',     icon:'🏛️', desc:'Субсидия +20% оборота',           type:'positive', instant:true, apply:() => {
+    const bonus = Math.max(15000, Math.floor(state.totalRevenue * 0.2));
+    state.money += bonus; state.totalRevenue += bonus;
+  }}
+];
+
+/* ============================================================
+   УТИЛИТЫ
+   ============================================================ */
+function fmt(n){
+  if (n >= 1e12) return (n/1e12).toFixed(2) + 'T';
+  if (n >= 1e9) return (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return (n/1e6).toFixed(2) + 'M';
+  if (n >= 1e4) return (n/1e3).toFixed(1) + 'K';
+  if (n >= 1e3) return (n/1e3).toFixed(2) + 'K';
+  return Math.floor(n).toString();
+}
+function fmtPrice(n){
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return n.toFixed(0);
+}
+function fmtTime(ms){
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return m > 0 ? `${m}:${sec.toString().padStart(2,'0')}` : `${sec}с`;
+}
+
+let audioCtx = null;
+function initAudio(){ if (audioCtx) return; try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
+function beep(f, d, t, v, delay){
+  if (!audioCtx) return;
+  try {
+    const start = audioCtx.currentTime + (delay || 0);
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = t || 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(v || 0.05, start);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + d);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(start); o.stop(start + d);
+  } catch(e){}
+}
+function sfxSell(){ beep(880, .06, 'triangle', .06); beep(1320, .08, 'triangle', .05, .06); }
+function sfxUpgrade(){ beep(500, .08, 'square', .04); beep(700, .1, 'square', .04, .08); }
+function sfxUnlock(){ beep(523, .1, 'sine', .06); beep(659, .1, 'sine', .06, .1); beep(784, .15, 'sine', .06, .2); beep(1047, .2, 'sine', .06, .35); }
+function sfxRankUp(){ beep(659, .08, 'sine', .05); beep(880, .1, 'sine', .05, .08); beep(1100, .15, 'sine', .05, .18); }
+function sfxRankDown(){ beep(400, .1, 'sawtooth', .04); beep(300, .15, 'sawtooth', .04, .1); }
+function sfxGrowth(){ beep(440, .08, 'sine', .03); beep(660, .1, 'sine', .03, .08); }
+function sfxPos(){ beep(660, .1, 'sine', .05); beep(880, .12, 'sine', .05, .1); }
+function sfxNeg(){ beep(400, .1, 'sawtooth', .05); beep(280, .12, 'sawtooth', .05, .1); }
+function sfxVictory(){ [523, 659, 784, 1047, 1319].forEach((n, i) => beep(n, .25, 'sine', .07, i * .12)); }
+function sfxBuy(){ beep(400, .05, 'square', .04); beep(600, .08, 'square', .04, .05); beep(900, .1, 'square', .04, .1); }
+function sfxCrypto(){ beep(700, .05, 'triangle', .04); beep(900, .06, 'triangle', .04, .05); }
+
+/* ============================================================
+   СОСТОЯНИЕ
+   ============================================================ */
+let state = null;
+let competitors = [];
+let stocks = [];
+let holdings = {};
+let crypto = [];
+let cryptoHoldings = {};
+let savingsBalance = 0;
+let goldPrice = 8000;
+let goldAmount = 0;
+let activeDeposits = [];
+let activeBonds = [];
+let cachedRank = 100;
+let currentTab = 'factory';
+let currentInvTab = 'stocks';
+let currentStockCategory = 'poly';
+let lastSaveCheck = 0;
+let lastT = performance.now();
+let lastCryptoUpdate = 0;
+let lastInvestRender = 0;
+let growthTimer = GROWTH_INTERVAL;
+let grewIdx = new Set();
+let grewFade = 0;
+let activeEvent = null;
+let nextEventAt = 0;
+let lastEventId = null;
+let lastOfflineEarnings = 0;
+let modalOpen = false;
+
+/* ============================================================
+   ИГРОВАЯ ЛОГИКА
+   ============================================================ */
+function getProduct(id){ return PRODUCTS.find(p => p.id === id); }
+function getLineTime(line){
+  const base = getProduct(line.productId).baseTime / (1 + line.speedLevel * SPEED_EFFECT);
+  return base / (state.eventSpeedMult || 1);
+}
+function getLinePrice(line){ return getProduct(line.productId).basePrice * (1 + line.qualityLevel * QUALITY_EFFECT); }
+function getGlobalPriceMult(){ return (1 + state.marketingLevel * MARKETING_EFFECT) * (state.eventPriceMult || 1); }
+function getSellPrice(line){ return Math.floor(getLinePrice(line) * getGlobalPriceMult()); }
+function getSpeedCost(line){ return Math.floor(getProduct(line.productId).basePrice * SPEED_BASE_MULT * Math.pow(COST_MULT, line.speedLevel)); }
+function getQualityCost(line){ return Math.floor(getProduct(line.productId).basePrice * QUALITY_BASE_MULT * Math.pow(COST_MULT, line.qualityLevel)); }
+function getPlayerRank(){
+  let beaten = 0;
+  for (const c of competitors) if (state.totalRevenue > c.score) beaten++;
+  return Math.max(1, 100 - beaten);
+}
+
+/* ============================================================
+   КОНКУРЕНТЫ
+   ============================================================ */
+function generateCompetitors(){
+  const comps = [];
+  for (let i = 0; i < COMPETITOR_COUNT; i++){
+    const name = PERM_FACTORIES[i % PERM_FACTORIES.length] +
+      (i >= PERM_FACTORIES.length ? ' ' + (Math.floor(i / PERM_FACTORIES.length) + 1) : '');
+    let score;
+    if (i < COMPETITOR_BASE_SCORES.length) score = COMPETITOR_BASE_SCORES[i];
+    else score = Math.max(3_000_000, Math.floor(250_000_000 * Math.pow(0.92, i - 10)));
+    comps.push({ name, score, baseScore: score, originalIdx: i, trend: 0, lastPct: 0 });
+  }
+  return comps;
+}
+
+function growCompetitors(){
+  const before = cachedRank;
+  grewIdx.clear();
+  for (let i = 0; i < competitors.length; i++){
+    const c = competitors[i];
+    let baseRate;
+    if (i < 10) baseRate = 0.002;
+    else if (i < 30) baseRate = 0.005;
+    else baseRate = 0.009;
+    const r = Math.random();
+    let pct, delta;
+    if (r < 0.7){ pct = baseRate * (0.5 + Math.random() * 1.5); delta = c.score * pct; }
+    else { pct = -baseRate * (0.3 + Math.random() * 0.9); delta = c.score * pct; }
+    c.score = Math.max(200, c.score + delta);
+    c.trend = delta > 0 ? 1 : -1;
+    c.lastPct = pct * 100;
+    grewIdx.add(i);
+  }
+  grewFade = 1.4;
+
+  updateStockPrices();
+  const goldChange = 0.994 + Math.random() * 0.012;
+  goldPrice = Math.max(1000, Math.floor(goldPrice * goldChange));
+
+  const after = getPlayerRank();
+  if (after > before){
+    cachedRank = after; flashRank(true); sfxRankDown();
+    showToast(`📉 Вы упали на #${after}!`, 2600, 'warn');
+  } else if (after < before){
+    cachedRank = after; flashRank(false); sfxRankUp();
+    showToast(`📈 Вы поднялись на #${after}!`, 2200, 'success');
+  } else sfxGrowth();
+  if (currentTab === 'rating') buildRatingUI();
+}
+
+/* ============================================================
+   АКЦИИ
+   ============================================================ */
+function initStocks(savedItScores){
+  stocks = [];
+  for (const t of STOCK_TICKERS){
+    const basePrice = competitors[t.idx].score / 100_000_000 * 10;
+    const fluct = 0.85 + Math.random() * 0.30;
+    stocks.push({
+      category:'poly', ticker:t.ticker, name:t.name, icon:t.icon, color:t.color, idx:t.idx,
+      basePrice, price: basePrice * fluct, prevPrice: basePrice * fluct, fluct, lastChangePct: 0
+    });
+  }
+  IT_STOCKS.forEach((t, i) => {
+    const baseScore = (savedItScores && savedItScores[i]) || t.baseScore;
+    const basePrice = baseScore / 100_000_000 * 10;
+    const fluct = 0.85 + Math.random() * 0.30;
+    stocks.push({
+      category:'it', ticker:t.ticker, name:t.name, icon:t.icon, color:t.color,
+      baseScore, basePrice, price: basePrice * fluct, prevPrice: basePrice * fluct, fluct, lastChangePct: 0
+    });
+  });
+}
+
+function updateStockPrices(){
+  for (const s of stocks){
+    if (s.category === 'poly'){
+      s.basePrice = competitors[s.idx].score / 100_000_000 * 10;
+    } else {
+      const r = Math.random();
+      let pct;
+      if (r < 0.75) pct = 0.005 + Math.random() * 0.015;
+      else pct = -(0.002 + Math.random() * 0.008);
+      s.baseScore *= (1 + pct);
+      s.basePrice = s.baseScore / 100_000_000 * 10;
+    }
+    s.prevPrice = s.price;
+    s.fluct = 0.85 + Math.random() * 0.30;
+    s.price = s.basePrice * s.fluct;
+    s.lastChangePct = s.prevPrice > 0 ? ((s.price - s.prevPrice) / s.prevPrice) * 100 : 0;
+  }
+}
+
+/* ============================================================
+   КРИПТА
+   ============================================================ */
+function initCrypto(){
+  crypto = CRYPTO_ASSETS.map(c => ({ ...c, price: c.basePrice, prevPrice: c.basePrice, lastChangePct: 0 }));
+}
+function updateCrypto(){
+  for (const c of crypto){
+    c.prevPrice = c.price;
+    const r = Math.random();
+    let change;
+    if (r < 0.05) change = 1.5 + Math.random() * 0.7;
+    else if (r < 0.10) change = 0.35 + Math.random() * 0.15;
+    else change = 1 + (Math.random() - 0.48) * c.volatility * 2;
+    c.price = Math.max(100, Math.floor(c.price * change));
+    c.lastChangePct = ((c.price - c.prevPrice) / c.prevPrice) * 100;
+  }
+  sfxCrypto();
+  if (currentTab === 'invest' && currentInvTab === 'crypto' && !modalOpen) buildInvestUI();
+}
+
+/* ============================================================
+   СОБЫТИЯ
+   ============================================================ */
+function scheduleNextEvent(){ nextEventAt = performance.now() + 40000 + Math.random() * 40000; }
+function maybeTriggerEvent(){
+  if (performance.now() < nextEventAt) return;
+  scheduleNextEvent();
+  const candidates = EVENTS.filter(e => e.id !== lastEventId);
+  const ev = candidates[Math.floor(Math.random() * candidates.length)];
+  lastEventId = ev.id;
+  triggerEvent(ev);
+}
+function triggerEvent(ev){
+  showEventBanner(ev);
+  if (ev.type === 'positive') sfxPos(); else sfxNeg();
+  if (ev.instant){ ev.apply(); hideEventBannerAfter(4000); }
+  else {
+    if (activeEvent){ state.eventPriceMult = 1; state.eventSpeedMult = 1; }
+    activeEvent = { id: ev.id, name: ev.name, icon: ev.icon, type: ev.type, endsAt: performance.now() + ev.duration * 1000 };
+    ev.apply(); updateEventBanner();
+  }
+  showToast(`${ev.icon} ${ev.name} — ${ev.desc}`, 3000, ev.type === 'positive' ? 'success' : 'warn');
+}
+function updateEventState(){
+  if (!activeEvent) return;
+  if (performance.now() >= activeEvent.endsAt){
+    state.eventPriceMult = 1; state.eventSpeedMult = 1;
+    activeEvent = null; hideEventBanner();
+  } else updateEventBanner();
+}
+function showEventBanner(ev){
+  const el = document.getElementById('eventBanner');
+  el.classList.remove('positive', 'negative');
+  el.classList.add('show', ev.type);
+  el.style.setProperty('--ev-color', ev.type === 'positive' ? '#34d399' : '#f87171');
+  document.getElementById('evIcon').textContent = ev.icon;
+  document.getElementById('evText').textContent = ev.name + ' — ' + ev.desc;
+  document.getElementById('evTimer').textContent = ev.instant ? '✓' : (ev.duration + 'с');
+}
+function updateEventBanner(){
+  if (!activeEvent) return;
+  const timer = document.getElementById('evTimer');
+  const left = Math.max(0, Math.ceil((activeEvent.endsAt - performance.now()) / 1000));
+  timer.textContent = left + 'с';
+  timer.style.color = left <= 3 ? '#f87171' : '';
+}
+function hideEventBanner(){ document.getElementById('eventBanner').classList.remove('show', 'positive', 'negative'); }
+function hideEventBannerAfter(ms){ setTimeout(() => { if (!activeEvent) hideEventBanner(); }, ms); }
+
+/* ============================================================
+   СОХРАНЕНИЕ
+   ============================================================ */
+function saveGame(){
+  try {
+    const data = {
+      v: SAVE_VERSION, savedAt: Date.now(),
+      money: state.money, totalRevenue: state.totalRevenue,
+      lines: state.lines.map(l => ({ productId: l.productId, speedLevel: l.speedLevel, qualityLevel: l.qualityLevel, stock: l.stock, progress: l.progress })),
+      unlockedProducts: state.unlockedProducts.slice(),
+      autoSell: state.autoSell, marketingLevel: state.marketingLevel, victoryShown: state.victoryShown,
+      competitorScores: competitors.map(c => Math.floor(c.score)),
+      growthTimer, holdings, cryptoHoldings, savingsBalance, goldPrice, goldAmount,
+      activeDeposits: activeDeposits.map(d => ({...d})),
+      activeBonds: activeBonds.map(b => ({...b})),
+      cryptoPrices: crypto.map(c => c.price),
+      itScores: stocks.filter(s => s.category === 'it').map(s => s.baseScore)
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch(e){}
+}
+function loadGame(){
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || data.v !== SAVE_VERSION) return null;
+    return data;
+  } catch(e){ return null; }
+}
+function initState(){
+  return { money: START_MONEY, totalRevenue: 0, lines: [], unlockedProducts: [], autoSell: false,
+           marketingLevel: 0, victoryShown: false, eventPriceMult: 1, eventSpeedMult: 1 };
+}
+
+function calculateOffline(saved, now){
+  if (!saved.savedAt) return { amount: 0, seconds: 0 };
+  const deltaSec = Math.min((now - saved.savedAt) / 1000, 3600 * 4);
+  if (deltaSec < 120) return { amount: 0, seconds: 0 };
+  let perSec = 0;
+  for (const line of saved.lines){
+    const p = getProduct(line.productId);
+    const time = p.baseTime / (1 + line.speedLevel * SPEED_EFFECT);
+    const price = p.basePrice * (1 + line.qualityLevel * QUALITY_EFFECT);
+    perSec += price / time;
+  }
+  const efficiency = saved.autoSell ? 0.65 : 0.35;
+  return { amount: Math.floor(perSec * deltaSec * efficiency), seconds: deltaSec };
+}
+
+/* ============================================================
+   FX
+   ============================================================ */
+const fxCanvas = document.getElementById('fx');
+const fx = fxCanvas.getContext('2d');
+let fxW = 0, fxH = 0, fxDPR = 1;
+const coinParticles = [];
+
+function resizeFx(){
+  fxW = innerWidth; fxH = innerHeight;
+  fxDPR = Math.min(devicePixelRatio || 1, 2);
+  fxCanvas.width = Math.floor(fxW * fxDPR);
+  fxCanvas.height = Math.floor(fxH * fxDPR);
+  fxCanvas.style.width = fxW + 'px'; fxCanvas.style.height = fxH + 'px';
+  fx.setTransform(fxDPR, 0, 0, fxDPR, 0, 0);
+}
+function showCoinBurst(x, y, count){
+  for (let i = 0; i < count; i++){
+    const a = -Math.PI/2 + (Math.random() - 0.5) * 1.6;
+    const sp = 120 + Math.random() * 220;
+    coinParticles.push({ x, y, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp, r: 3 + Math.random()*3, life: 1, maxLife: 1 });
+  }
+}
+function updateFx(dt){
+  for (let i = coinParticles.length - 1; i >= 0; i--){
+    const p = coinParticles[i];
+    p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 480*dt; p.life -= dt*1.1;
+    if (p.life <= 0) coinParticles.splice(i, 1);
+  }
+}
+function renderFx(){
+  fx.clearRect(0, 0, fxW, fxH);
+  for (const p of coinParticles){
+    fx.globalAlpha = Math.max(0, p.life / p.maxLife);
+    fx.fillStyle = '#ffc440';
+    fx.beginPath(); fx.arc(p.x, p.y, p.r, 0, Math.PI*2); fx.fill();
+    fx.strokeStyle = '#d99a1a'; fx.lineWidth = 1.2; fx.stroke();
+    fx.fillStyle = '#fff6d5';
+    fx.beginPath(); fx.arc(p.x - p.r*0.3, p.y - p.r*0.3, p.r*0.35, 0, Math.PI*2); fx.fill();
+  }
+  fx.globalAlpha = 1;
+}
+
+/* ============================================================
+   UI: ЗАВОД
+   ============================================================ */
+let lineCards = [];
+
+function buildFactoryUI(){
+  const container = document.getElementById('linesContainer');
+  container.innerHTML = '';
+  lineCards = [];
+  for (const prod of PRODUCTS){
+    const unlocked = state.unlockedProducts.includes(prod.id);
+    const lineIdx = state.lines.findIndex(l => l.productId === prod.id);
+    const line = lineIdx >= 0 ? state.lines[lineIdx] : null;
+    const card = document.createElement('div');
+    card.className = 'line-card' + (unlocked ? '' : ' locked');
+    card.style.setProperty('--accent', prod.color);
+    if (unlocked && line){
+      card.innerHTML = `
+        <div class="line-head">
+          <div class="line-icon">${prod.icon}</div>
+          <div class="line-title">
+            <div class="line-name">${prod.name}</div>
+            <div class="line-meta"><span>⚡ ${line.speedLevel}/${MAX_LEVEL}</span><span>✨ ${line.qualityLevel}/${MAX_LEVEL}</span></div>
+          </div>
+          <div class="line-stock-box"><div class="line-stock-val" data-stock>0</div><div class="line-stock-label">шт.</div></div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" data-progress></div></div>
+        <div class="line-actions">
+          <button class="btn-sell" data-sell>Продать</button>
+          <button class="btn-upg" data-speed>⚡</button>
+          <button class="btn-upg" data-quality>✨</button>
+        </div>`;
+      const sellBtn = card.querySelector('[data-sell]');
+      sellBtn.addEventListener('click', (e) => {
+        const r = sellBtn.getBoundingClientRect();
+        sellLine(lineIdx, r.left + r.width/2, r.top + r.height/2);
+      });
+      card.querySelector('[data-speed]').addEventListener('click', () => buySpeed(lineIdx));
+      card.querySelector('[data-quality]').addEventListener('click', () => buyQuality(lineIdx));
+      lineCards.push({ card, lineIdx, stockEl: card.querySelector('[data-stock]'),
+                       progressEl: card.querySelector('[data-progress]'), sellBtn,
+                       speedBtn: card.querySelector('[data-speed]'), qualityBtn: card.querySelector('[data-quality]') });
+    } else {
+      card.innerHTML = `
+        <div class="line-locked">
+          <div class="line-locked-row">
+            <div class="line-icon">${prod.icon}</div>
+            <div class="line-locked-info">
+              <div class="line-name">${prod.name}</div>
+              <div class="line-unlock">🔒 Требуются вложения</div>
+            </div>
+          </div>
+          <div class="locked-progress"><div class="locked-progress-fill" data-locked-progress></div></div>
+          <button class="btn-unlock" data-unlock>🔓 Открыть за ${fmt(prod.unlockCost)} ₽</button>
+        </div>`;
+      const unlockBtn = card.querySelector('[data-unlock]');
+      const progressEl = card.querySelector('[data-locked-progress]');
+      unlockBtn.addEventListener('click', () => buyUnlock(prod.id));
+      lineCards.push({ card, productId: prod.id, locked: true, unlockBtn, progressEl, unlockCost: prod.unlockCost });
+    }
+    container.appendChild(card);
+  }
+  updateFactoryUI();
+}
+
+function updateFactoryUI(){
+  for (const item of lineCards){
+    if (item.locked){
+      const canAfford = state.money >= item.unlockCost;
+      item.progressEl.style.transform = `scaleX(${Math.min(1, state.money / item.unlockCost)})`;
+      item.unlockBtn.disabled = !canAfford;
+      item.unlockBtn.classList.toggle('ready', canAfford);
+      item.unlockBtn.textContent = canAfford ? `🔓 Открыть за ${fmt(item.unlockCost)} ₽` : `Нужно ${fmt(item.unlockCost)} ₽`;
+      continue;
+    }
+    const line = state.lines[item.lineIdx];
+    if (!line) continue;
+    item.stockEl.textContent = Math.floor(line.stock);
+    item.progressEl.style.transform = `scaleX(${Math.min(1, line.progress)})`;
+    const total = Math.floor(line.stock) * getSellPrice(line);
+    item.sellBtn.textContent = `Продать ${fmt(total)} ₽`;
+    item.sellBtn.disabled = line.stock < 1;
+    if (line.speedLevel >= MAX_LEVEL){ item.speedBtn.textContent = '⚡ MAX'; item.speedBtn.disabled = true; }
+    else { const c = getSpeedCost(line); item.speedBtn.textContent = `⚡ ${fmt(c)}`; item.speedBtn.disabled = state.money < c; }
+    if (line.qualityLevel >= MAX_LEVEL){ item.qualityBtn.textContent = '✨ MAX'; item.qualityBtn.disabled = true; }
+    else { const c = getQualityCost(line); item.qualityBtn.textContent = `✨ ${fmt(c)}`; item.qualityBtn.disabled = state.money < c; }
+  }
+}
+
+/* ============================================================
+   UI: АПГРЕЙДЫ
+   ============================================================ */
+function buildUpgradesUI(){
+  const container = document.getElementById('upgradesContainer');
+  container.innerHTML = `
+    <div class="upgrade-section">
+      <div class="section-title">🤖 Автоматизация</div>
+      <div class="upgrade-card">
+        <div class="upg-icon">🔄</div>
+        <div class="upg-info"><div class="upg-name">Авто-продажа</div><div class="upg-desc">Продукция продаётся автоматически</div></div>
+        <button class="upg-buy" id="autoSellBtn">Купить</button>
+      </div>
+    </div>
+    <div class="upgrade-section">
+      <div class="section-title">📢 Маркетинг</div>
+      <div class="upgrade-card">
+        <div class="upg-icon">📈</div>
+        <div class="upg-info"><div class="upg-name">Уровень <span id="marketingLvl">0</span>/9</div><div class="upg-desc">Цены +<span id="marketingBonus">0</span>%</div></div>
+        <button class="upg-buy" id="marketingBtn">Купить</button>
+      </div>
+    </div>
+    <div class="upgrade-section">
+      <div class="section-title">🏭 Производства (вложения)</div>
+      <div id="productsInfo"></div>
+    </div>`;
+  document.getElementById('autoSellBtn').addEventListener('click', buyAutoSell);
+  document.getElementById('marketingBtn').addEventListener('click', buyMarketing);
+  updateUpgradesUI();
+}
+function updateUpgradesUI(){
+  const btn = document.getElementById('autoSellBtn');
+  if (!btn) return;
+  if (state.autoSell){ btn.textContent = '✓ Куплено'; btn.disabled = true; }
+  else { btn.textContent = `${fmt(AUTO_SELL_COST)} ₽`; btn.disabled = state.money < AUTO_SELL_COST; }
+  document.getElementById('marketingLvl').textContent = state.marketingLevel;
+  document.getElementById('marketingBonus').textContent = Math.round(state.marketingLevel * MARKETING_EFFECT * 100);
+  const mBtn = document.getElementById('marketingBtn');
+  if (state.marketingLevel >= MARKETING_COSTS.length){ mBtn.textContent = 'MAX'; mBtn.disabled = true; }
+  else { const c = MARKETING_COSTS[state.marketingLevel]; mBtn.textContent = `${fmt(c)} ₽`; mBtn.disabled = state.money < c; }
+  let html = '';
+  for (const prod of PRODUCTS){
+    const unlocked = state.unlockedProducts.includes(prod.id);
+    if (unlocked) html += `<div class="product-row unlocked"><span class="product-icon">${prod.icon}</span><span class="product-name">${prod.name}</span><span class="product-status">✓ Открыто</span></div>`;
+    else {
+      const canAfford = state.money >= prod.unlockCost;
+      html += `<div class="product-row locked"><span class="product-icon">${prod.icon}</span><span class="product-name">${prod.name}</span><span class="product-status" style="color:${canAfford ? 'var(--green)' : 'var(--muted)'}">${fmt(prod.unlockCost)} ₽</span></div>`;
+    }
+  }
+  document.getElementById('productsInfo').innerHTML = html;
+}
+
+/* ============================================================
+   UI: ИНВЕСТИЦИИ
+   ============================================================ */
+const INV_TABS = [
+  { id:'stocks',   name:'📈 Акции' },
+  { id:'crypto',   name:'₿ Крипта' },
+  { id:'deposits', name:'🏦 Вклады' },
+  { id:'savings',  name:'💰 Сбер.' },
+  { id:'bonds',    name:'📊 Облигации' },
+  { id:'gold',     name:'🥇 Золото' }
+];
+
+function buildInvTabs(){
+  const container = document.getElementById('invTabs');
+  container.innerHTML = INV_TABS.map(t => {
+    let badge = '';
+    if (t.id === 'deposits' && activeDeposits.length > 0) badge = `<span class="badge">${activeDeposits.length}</span>`;
+    if (t.id === 'bonds' && activeBonds.length > 0) badge = `<span class="badge">${activeBonds.length}</span>`;
+    return `<button class="inv-tab-btn ${currentInvTab === t.id ? 'active' : ''}" data-inv="${t.id}">${t.name}${badge}</button>`;
+  }).join('');
+  container.querySelectorAll('.inv-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentInvTab = btn.dataset.inv;
+      buildInvTabs();
+      buildInvestUI();
+    });
+  });
+}
+
+function buildInvestUI(){
+  const container = document.getElementById('invContent');
+  switch (currentInvTab){
+    case 'stocks':   renderStocks(container); break;
+    case 'crypto':   renderCrypto(container); break;
+    case 'deposits': renderDeposits(container); break;
+    case 'savings':  renderSavings(container); break;
+    case 'bonds':    renderBonds(container); break;
+    case 'gold':     renderGold(container); break;
+  }
+}
+
+function renderStocks(container){
+  const filtered = stocks.filter(s => s.category === currentStockCategory);
+  let html = `
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <button class="inv-tab-btn ${currentStockCategory === 'poly' ? 'active' : ''}" data-stkcat="poly" style="flex:1;text-align:center">🏭 Полимеры</button>
+      <button class="inv-tab-btn ${currentStockCategory === 'it' ? 'active' : ''}" data-stkcat="it" style="flex:1;text-align:center">💻 IT</button>
+    </div>`;
+
+  if (currentStockCategory === 'it'){
+    html += `<div class="savings-preview" style="background:rgba(96,165,250,0.08);border-color:rgba(96,165,250,0.3);color:#60a5fa;margin-bottom:10px">
+      💻 IT-сектор растёт быстрее: +0.5-2% за период, но бывают просадки
+    </div>`;
+  }
+
+  for (const s of filtered){
+    const h = holdings[s.ticker];
+    const owned = h && h.count > 0;
+    const changePct = s.lastChangePct;
+    const arrow = changePct >= 0 ? '▲' : '▼';
+    const changeCls = changePct >= 0 ? 'up' : 'down';
+    html += `<div class="inv-card ${owned ? 'owned' : ''}">
+      <div class="asset-row">
+        <div class="asset-icon" style="--a-color:${s.color}">${s.icon}</div>
+        <div class="asset-info"><div class="asset-ticker">${s.ticker}</div><div class="asset-name">${s.name}</div></div>
+        <div class="asset-price-box"><div class="asset-price">${fmtPrice(s.price)} ₽</div><div class="asset-change ${changeCls}">${arrow} ${Math.abs(changePct).toFixed(2)}%</div></div>
+      </div>
+      ${owned ? `<div class="asset-holding"><span>${h.count} шт.</span><span>Ср: ${fmtPrice(h.avgPrice)} ₽</span></div>` : ''}
+      <div class="asset-actions">
+        <button class="btn-trade buy" data-buy="${s.ticker}">Купить</button>
+        <button class="btn-trade sell" data-sell="${s.ticker}" ${owned ? '' : 'disabled'}>Продать</button>
+      </div>
+    </div>`;
+  }
+  container.innerHTML = html;
+  container.querySelectorAll('[data-stkcat]').forEach(b => {
+    b.addEventListener('click', () => {
+      currentStockCategory = b.dataset.stkcat;
+      renderStocks(container);
+    });
+  });
+  container.querySelectorAll('[data-buy]').forEach(b => b.addEventListener('click', () => openTradeModal(b.dataset.buy, 'buy', 'stocks')));
+  container.querySelectorAll('[data-sell]').forEach(b => b.addEventListener('click', () => openTradeModal(b.dataset.sell, 'sell', 'stocks')));
+}
+
+function renderCrypto(container){
+  let html = `<div class="savings-preview" style="background:rgba(247,147,26,0.08);border-color:rgba(247,147,26,0.3);color:#f7931a">
+    ₿ Цены обновляются каждые 30 секунд. Высокая волатильность!
+  </div>`;
+  for (const c of crypto){
+    const h = cryptoHoldings[c.ticker];
+    const owned = h && h.count > 0;
+    const changePct = c.lastChangePct;
+    const arrow = changePct >= 0 ? '▲' : '▼';
+    const changeCls = changePct >= 0 ? 'up' : 'down';
+    html += `<div class="inv-card ${owned ? 'owned' : ''}">
+      <div class="asset-row">
+        <div class="asset-icon" style="--a-color:${c.color}">${c.icon}</div>
+        <div class="asset-info"><div class="asset-ticker">${c.ticker}</div><div class="asset-name">${c.name}</div></div>
+        <div class="asset-price-box"><div class="asset-price">${fmtPrice(c.price)} ₽</div><div class="asset-change ${changeCls}">${arrow} ${Math.abs(changePct).toFixed(2)}%</div></div>
+      </div>
+      ${owned ? `<div class="asset-holding"><span>${h.count.toFixed(4)} ${c.ticker}</span><span>Ср: ${fmtPrice(h.avgPrice)} ₽</span></div>` : ''}
+      <div class="asset-actions">
+        <button class="btn-trade buy" data-cbuy="${c.ticker}">Купить</button>
+        <button class="btn-trade sell" data-csell="${c.ticker}" ${owned ? '' : 'disabled'}>Продать</button>
+      </div>
+    </div>`;
+  }
+  container.innerHTML = html;
+  container.querySelectorAll('[data-cbuy]').forEach(b => b.addEventListener('click', () => openTradeModal(b.dataset.cbuy, 'buy', 'crypto')));
+  container.querySelectorAll('[data-csell]').forEach(b => b.addEventListener('click', () => openTradeModal(b.dataset.csell, 'sell', 'crypto')));
+}
+
+function renderDeposits(container){
+  let html = '';
+  if (activeDeposits.length > 0){
+    html += `<div class="section-title">Активные вклады</div>`;
+    for (const d of activeDeposits){
+      const now = Date.now();
+      const total = d.endsAt - d.startedAt;
+      const passed = now - d.startedAt;
+      const pct = Math.min(1, Math.max(0, passed / total));
+      const remaining = Math.max(0, d.endsAt - now);
+      const payout = Math.floor(d.amount * (1 + d.rate));
+      html += `<div class="position-card">
+        <div class="position-head">
+          <div class="position-title">🏦 ${d.name}</div>
+          <div class="position-payout">${fmt(payout)} ₽</div>
+        </div>
+        <div class="position-progress"><div class="position-progress-fill" style="transform:scaleX(${pct})"></div></div>
+        <div class="position-meta">
+          <span>Вложено: ${fmt(d.amount)} ₽</span>
+          <span>⏱ ${fmtTime(remaining)}</span>
+        </div>
+      </div>`;
+    }
+  }
+  html += `<div class="section-title" style="margin-top:${activeDeposits.length > 0 ? '16px' : '0'}">Открыть новый вклад</div>`;
+  for (const dep of DEPOSITS){
+    html += `<div class="inv-card">
+      <div class="asset-row">
+        <div class="asset-icon" style="--a-color:${dep.color}">${dep.icon}</div>
+        <div class="asset-info">
+          <div class="asset-ticker">${dep.name}</div>
+          <div class="asset-name">${fmtTime(dep.duration * 1000)} · +${Math.round(dep.rate * 100)}%</div>
+        </div>
+        <div class="asset-price-box">
+          <div class="asset-price">+${Math.round(dep.rate * 100)}%</div>
+          <div class="asset-change" style="color:var(--muted)">за ${fmtTime(dep.duration * 1000)}</div>
+        </div>
+      </div>
+      <div class="asset-actions">
+        <button class="btn-trade info" data-dep="${dep.id}">Вложить от ${fmtPrice(dep.minAmount)} ₽</button>
+      </div>
+    </div>`;
+  }
+  container.innerHTML = html;
+  container.querySelectorAll('[data-dep]').forEach(b => b.addEventListener('click', () => openDepositModal(b.dataset.dep)));
+}
+
+function renderSavings(container){
+  const perMin = savingsBalance * SAVINGS_RATE_PER_MIN;
+  container.innerHTML = `
+    <div class="inv-card highlight">
+      <div style="text-align:center">
+        <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:4px">Баланс</div>
+        <div class="savings-balance">${fmt(savingsBalance)} ₽</div>
+        <div class="savings-hint">+${SAVINGS_RATE_PER_MIN * 100}% в минуту · ≈${Math.round((Math.pow(1 + SAVINGS_RATE_PER_MIN, 60) - 1) * 100)}% в час</div>
+        ${savingsBalance > 0 ? `<div class="savings-preview">📈 +${fmt(perMin)} ₽/мин · +${fmt(perMin * 60)} ₽/час</div>` : ''}
+      </div>
+      <div class="asset-actions">
+        <button class="btn-trade buy" id="savDepositBtn">Пополнить</button>
+        <button class="btn-trade sell" id="savWithdrawBtn" ${savingsBalance > 0 ? '' : 'disabled'}>Снять</button>
+      </div>
+    </div>
+    <div class="empty-state">
+      <span class="empty-emoji">💰</span>
+      Сберегательный счёт — это как копилка с процентами.<br>Деньги работают, а снять можно в любой момент.
+    </div>`;
+  document.getElementById('savDepositBtn').addEventListener('click', () => openSavingsModal('deposit'));
+  document.getElementById('savWithdrawBtn').addEventListener('click', () => openSavingsModal('withdraw'));
+}
+
+function renderBonds(container){
+  let html = '';
+  if (activeBonds.length > 0){
+    html += `<div class="section-title">Активные облигации</div>`;
+    for (const b of activeBonds){
+      const now = Date.now();
+      const total = b.endsAt - b.startedAt;
+      const passed = now - b.startedAt;
+      const pct = Math.min(1, Math.max(0, passed / total));
+      const remaining = Math.max(0, b.endsAt - now);
+      const payout = Math.floor(b.amount * (1 + b.rate));
+      html += `<div class="position-card">
+        <div class="position-head">
+          <div class="position-title">📊 ${b.name}</div>
+          <div class="position-payout">${fmt(payout)} ₽</div>
+        </div>
+        <div class="position-progress"><div class="position-progress-fill" style="transform:scaleX(${pct});background:linear-gradient(90deg,#22d3ee,#0891b2)"></div></div>
+        <div class="position-meta">
+          <span>Вложено: ${fmt(b.amount)} ₽</span>
+          <span>⏱ ${fmtTime(remaining)}</span>
+        </div>
+      </div>`;
+    }
+  }
+  html += `<div class="section-title" style="margin-top:${activeBonds.length > 0 ? '16px' : '0'}">Купить облигации</div>
+    <div class="savings-preview" style="background:rgba(34,211,238,0.08);border-color:rgba(34,211,238,0.3);color:#22d3ee">
+      📊 Облигации — низкий риск, гарантированный возврат с процентами
+    </div>`;
+  for (const bnd of BONDS){
+    html += `<div class="inv-card">
+      <div class="asset-row">
+        <div class="asset-icon" style="--a-color:${bnd.color}">${bnd.icon}</div>
+        <div class="asset-info">
+          <div class="asset-ticker">${bnd.name}</div>
+          <div class="asset-name">${fmtTime(bnd.duration * 1000)} · +${Math.round(bnd.rate * 100)}%</div>
+        </div>
+        <div class="asset-price-box">
+          <div class="asset-price">+${Math.round(bnd.rate * 100)}%</div>
+          <div class="asset-change" style="color:var(--muted)">за ${fmtTime(bnd.duration * 1000)}</div>
+        </div>
+      </div>
+      <div class="asset-actions">
+        <button class="btn-trade info" data-bond="${bnd.id}">Купить от ${fmtPrice(bnd.minAmount)} ₽</button>
+      </div>
+    </div>`;
+  }
+  container.innerHTML = html;
+  container.querySelectorAll('[data-bond]').forEach(b => b.addEventListener('click', () => openBondModal(b.dataset.bond)));
+}
+
+function renderGold(container){
+  const goldValue = Math.floor(goldAmount * goldPrice);
+  container.innerHTML = `
+    <div class="inv-card highlight">
+      <div class="asset-row">
+        <div class="asset-icon" style="--a-color:#fbbf24">🥇</div>
+        <div class="asset-info">
+          <div class="asset-ticker">Золото</div>
+          <div class="asset-name">Безопасный актив · растёт стабильно</div>
+        </div>
+        <div class="asset-price-box">
+          <div class="asset-price">${fmtPrice(goldPrice)} ₽</div>
+          <div class="asset-change up">за 1 грамм</div>
+        </div>
+      </div>
+    </div>
+    <div class="inv-card ${goldAmount > 0 ? 'owned' : ''}">
+      <div style="text-align:center;padding:6px 0">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:4px">У вас</div>
+        <div class="savings-balance" style="font-size:24px">${goldAmount.toFixed(3)} г</div>
+        <div class="savings-hint">Стоимость: ${fmt(goldValue)} ₽</div>
+      </div>
+      <div class="asset-actions">
+        <button class="btn-trade buy" id="goldBuyBtn">Купить</button>
+        <button class="btn-trade sell" id="goldSellBtn" ${goldAmount > 0 ? '' : 'disabled'}>Продать</button>
+      </div>
+    </div>
+    <div class="empty-state">
+      <span class="empty-emoji">🥇</span>
+      Золото растёт на 0.5-1% каждые 3 минуты.<br>Это защитный актив на случай кризиса.
+    </div>`;
+  document.getElementById('goldBuyBtn').addEventListener('click', () => openGoldModal('buy'));
+  document.getElementById('goldSellBtn').addEventListener('click', () => openGoldModal('sell'));
+}
+
+/* ============================================================
+   МОДАЛКИ (исправлены — слайдер не пересоздаётся)
+   ============================================================ */
+function closeModal(overlay){
+  modalOpen = false;
+  overlay.remove();
+  if (currentTab === 'invest') buildInvestUI();
+}
+
+function openTradeModal(ticker, mode, type){
+  if (modalOpen) return;
+  let asset, holdingsMap, costMult, revenueMult;
+  if (type === 'stocks'){
+    asset = stocks.find(s => s.ticker === ticker);
+    holdingsMap = holdings;
+    costMult = 1.01; revenueMult = 0.99;
+  } else {
+    asset = crypto.find(c => c.ticker === ticker);
+    holdingsMap = cryptoHoldings;
+    costMult = 1.005; revenueMult = 0.995;
+  }
+  if (!asset) return;
+  const h = holdingsMap[ticker] || { count: 0, avgPrice: 0 };
+  const maxCount = mode === 'buy' ? Math.floor(state.money / (asset.price * costMult)) : h.count;
+  if (maxCount < (mode === 'buy' ? 1 : 0.0001)){
+    showToast(mode === 'buy' ? '❌ Недостаточно денег' : '❌ Нет активов', 1800, 'warn');
+    return;
+  }
+
+  modalOpen = true;
+  const isCrypto = type === 'crypto';
+  const step = isCrypto ? 0.0001 : 1;
+  let count = mode === 'buy'
+    ? Math.max(step, Math.floor((maxCount / 2) / step) * step)
+    : h.count;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-emoji">${mode === 'buy' ? '📈' : '💸'}</div>
+      <div class="modal-title">${mode === 'buy' ? 'Купить' : 'Продать'} ${ticker}</div>
+      <div class="modal-text">${asset.name} · ${fmtPrice(asset.price)} ₽/шт</div>
+      <input type="range" class="trade-slider" min="${isCrypto ? 0.0001 : 1}" max="${maxCount}" step="${step}" value="${count}">
+      <div class="trade-amount"></div>
+      <div class="trade-total"></div>
+      <div class="trade-quick">
+        ${isCrypto
+          ? `<button data-q="0.001">0.001</button><button data-q="0.01">0.01</button><button data-q="0.1">0.1</button><button data-q="max">MAX</button>`
+          : `<button data-q="1">1</button><button data-q="10">10</button><button data-q="100">100</button><button data-q="max">MAX</button>`}
+      </div>
+      <button class="modal-btn" id="tradeConfirm">${mode === 'buy' ? 'Купить' : 'Продать'}</button>
+      <button class="modal-btn ghost" id="tradeCancel">Отмена</button>
+    </div>`;
+
+  const slider = overlay.querySelector('input[type=range]');
+  const amountEl = overlay.querySelector('.trade-amount');
+  const totalEl = overlay.querySelector('.trade-total');
+
+  function updateDisplays(){
+    const total = mode === 'buy'
+      ? Math.floor(asset.price * costMult * count)
+      : Math.floor(asset.price * revenueMult * count);
+    amountEl.textContent = isCrypto ? count.toFixed(4) : count;
+    totalEl.textContent = 'Итого: ' + fmt(total) + ' ₽';
+  }
+  updateDisplays();
+
+  slider.addEventListener('input', e => {
+    count = parseFloat(e.target.value);
+    updateDisplays();
+  });
+
+  overlay.querySelectorAll('[data-q]').forEach(b => {
+    b.addEventListener('click', () => {
+      const q = b.dataset.q;
+      let v = q === 'max' ? maxCount : parseFloat(q);
+      if (v > maxCount) v = maxCount;
+      if (v < step) v = step;
+      count = v;
+      slider.value = count;
+      updateDisplays();
+    });
+  });
+
+  overlay.querySelector('#tradeConfirm').addEventListener('click', () => {
+    if (mode === 'buy'){
+      if (type === 'stocks') buyStock(ticker, count);
+      else buyCrypto(ticker, count);
+    } else {
+      if (type === 'stocks') sellStock(ticker, count);
+      else sellCrypto(ticker, count);
+    }
+    closeModal(overlay);
+  });
+  overlay.querySelector('#tradeCancel').addEventListener('click', () => closeModal(overlay));
+
+  document.body.appendChild(overlay);
+}
+
+function openDepositModal(depId){
+  if (modalOpen) return;
+  const dep = DEPOSITS.find(d => d.id === depId);
+  if (!dep) return;
+  const maxAmount = state.money;
+  if (maxAmount < dep.minAmount){
+    showToast(`❌ Минимум ${fmt(dep.minAmount)} ₽`, 2000, 'warn');
+    return;
+  }
+  modalOpen = true;
+  let amount = dep.minAmount;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-emoji">${dep.icon}</div>
+      <div class="modal-title">${dep.name}</div>
+      <div class="modal-text">Срок: ${fmtTime(dep.duration * 1000)} · Доход +${Math.round(dep.rate * 100)}%</div>
+      <input type="range" class="trade-slider" min="${dep.minAmount}" max="${maxAmount}" step="100000" value="${amount}">
+      <div class="trade-amount"></div>
+      <div class="trade-total"></div>
+      <div class="trade-quick">
+        <button data-q="min">MIN</button><button data-q="half">50%</button><button data-q="max">MAX</button>
+      </div>
+      <button class="modal-btn" id="depConfirm">Открыть вклад</button>
+      <button class="modal-btn ghost" id="depCancel">Отмена</button>
+    </div>`;
+
+  const slider = overlay.querySelector('input[type=range]');
+  const amountEl = overlay.querySelector('.trade-amount');
+  const totalEl = overlay.querySelector('.trade-total');
+
+  function updateDisplays(){
+    const payout = Math.floor(amount * (1 + dep.rate));
+    const profit = payout - amount;
+    amountEl.textContent = fmt(amount) + ' ₽';
+    totalEl.innerHTML = `Вернётся: <strong style="color:var(--green)">${fmt(payout)} ₽</strong> (+${fmt(profit)})`;
+  }
+  updateDisplays();
+
+  slider.addEventListener('input', e => { amount = parseFloat(e.target.value); updateDisplays(); });
+
+  overlay.querySelectorAll('[data-q]').forEach(b => {
+    b.addEventListener('click', () => {
+      const q = b.dataset.q;
+      if (q === 'min') amount = dep.minAmount;
+      else if (q === 'half') amount = Math.floor(maxAmount / 2);
+      else amount = maxAmount;
+      if (amount < dep.minAmount) amount = dep.minAmount;
+      slider.value = amount;
+      updateDisplays();
+    });
+  });
+
+  overlay.querySelector('#depConfirm').addEventListener('click', () => {
+    openDeposit(depId, amount);
+    closeModal(overlay);
+  });
+  overlay.querySelector('#depCancel').addEventListener('click', () => closeModal(overlay));
+
+  document.body.appendChild(overlay);
+}
+
+function openBondModal(bondId){
+  if (modalOpen) return;
+  const bnd = BONDS.find(b => b.id === bondId);
+  if (!bnd) return;
+  const maxAmount = state.money;
+  if (maxAmount < bnd.minAmount){
+    showToast(`❌ Минимум ${fmt(bnd.minAmount)} ₽`, 2000, 'warn');
+    return;
+  }
+  modalOpen = true;
+  let amount = bnd.minAmount;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-emoji">${bnd.icon}</div>
+      <div class="modal-title">${bnd.name}</div>
+      <div class="modal-text">Срок: ${fmtTime(bnd.duration * 1000)} · Доход +${Math.round(bnd.rate * 100)}%</div>
+      <input type="range" class="trade-slider" min="${bnd.minAmount}" max="${maxAmount}" step="100000" value="${amount}">
+      <div class="trade-amount"></div>
+      <div class="trade-total"></div>
+      <div class="trade-quick">
+        <button data-q="min">MIN</button><button data-q="half">50%</button><button data-q="max">MAX</button>
+      </div>
+      <button class="modal-btn" id="bndConfirm">Купить облигации</button>
+      <button class="modal-btn ghost" id="bndCancel">Отмена</button>
+    </div>`;
+
+  const slider = overlay.querySelector('input[type=range]');
+  const amountEl = overlay.querySelector('.trade-amount');
+  const totalEl = overlay.querySelector('.trade-total');
+
+  function updateDisplays(){
+    const payout = Math.floor(amount * (1 + bnd.rate));
+    amountEl.textContent = fmt(amount) + ' ₽';
+    totalEl.innerHTML = `Вернётся: <strong style="color:var(--green)">${fmt(payout)} ₽</strong>`;
+  }
+  updateDisplays();
+
+  slider.addEventListener('input', e => { amount = parseFloat(e.target.value); updateDisplays(); });
+
+  overlay.querySelectorAll('[data-q]').forEach(b => {
+    b.addEventListener('click', () => {
+      const q = b.dataset.q;
+      if (q === 'min') amount = bnd.minAmount;
+      else if (q === 'half') amount = Math.floor(maxAmount / 2);
+      else amount = maxAmount;
+      if (amount < bnd.minAmount) amount = bnd.minAmount;
+      slider.value = amount;
+      updateDisplays();
+    });
+  });
+
+  overlay.querySelector('#bndConfirm').addEventListener('click', () => {
+    buyBond(bondId, amount);
+    closeModal(overlay);
+  });
+  overlay.querySelector('#bndCancel').addEventListener('click', () => closeModal(overlay));
+
+  document.body.appendChild(overlay);
+}
+
+function openSavingsModal(mode){
+  if (modalOpen) return;
+  const maxAmount = mode === 'deposit' ? state.money : savingsBalance;
+  if (maxAmount <= 0) return;
+  modalOpen = true;
+  let amount = Math.floor(maxAmount / 2);
+  if (amount < 1000) amount = maxAmount;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-emoji">${mode === 'deposit' ? '💰' : '💸'}</div>
+      <div class="modal-title">${mode === 'deposit' ? 'Пополнить счёт' : 'Снять со счёта'}</div>
+      <div class="modal-text">Сберегательный · +${SAVINGS_RATE_PER_MIN * 100}%/мин</div>
+      <input type="range" class="trade-slider" min="1000" max="${maxAmount}" step="1000" value="${amount}">
+      <div class="trade-amount"></div>
+      <div class="trade-quick">
+        <button data-q="half">50%</button><button data-q="max">MAX</button>
+      </div>
+      <button class="modal-btn" id="savConfirm">${mode === 'deposit' ? 'Пополнить' : 'Снять'}</button>
+      <button class="modal-btn ghost" id="savCancel">Отмена</button>
+    </div>`;
+
+  const slider = overlay.querySelector('input[type=range]');
+  const amountEl = overlay.querySelector('.trade-amount');
+
+  function updateDisplays(){ amountEl.textContent = fmt(amount) + ' ₽'; }
+  updateDisplays();
+
+  slider.addEventListener('input', e => { amount = parseFloat(e.target.value); updateDisplays(); });
+
+  overlay.querySelectorAll('[data-q]').forEach(b => {
+    b.addEventListener('click', () => {
+      amount = b.dataset.q === 'max' ? maxAmount : Math.floor(maxAmount / 2);
+      if (amount < 1000) amount = 1000;
+      slider.value = amount;
+      updateDisplays();
+    });
+  });
+
+  overlay.querySelector('#savConfirm').addEventListener('click', () => {
+    if (mode === 'deposit'){
+      if (state.money >= amount){ state.money -= amount; savingsBalance += amount; sfxBuy(); }
+    } else {
+      if (savingsBalance >= amount){ savingsBalance -= amount; state.money += amount; sfxSell(); }
+    }
+    saveGame();
+    closeModal(overlay);
+  });
+  overlay.querySelector('#savCancel').addEventListener('click', () => closeModal(overlay));
+
+  document.body.appendChild(overlay);
+}
+
+function openGoldModal(mode){
+  if (modalOpen) return;
+  if (mode === 'sell' && goldAmount <= 0) return;
+
+  modalOpen = true;
+  const maxAmount = mode === 'buy' ? state.money : 0;
+  const maxGrams = mode === 'buy' ? (maxAmount / goldPrice) : goldAmount;
+  let grams = mode === 'buy'
+    ? Math.max(0.001, Math.floor((maxGrams / 2) * 1000) / 1000)
+    : goldAmount;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-emoji">🥇</div>
+      <div class="modal-title">${mode === 'buy' ? 'Купить золото' : 'Продать золото'}</div>
+      <div class="modal-text">${fmtPrice(goldPrice)} ₽/грамм</div>
+      <input type="range" class="trade-slider" min="0.001" max="${maxGrams.toFixed(3)}" step="0.001" value="${grams}">
+      <div class="trade-amount"></div>
+      <div class="trade-total"></div>
+      <button class="modal-btn" id="goldConfirm">${mode === 'buy' ? 'Купить' : 'Продать'}</button>
+      <button class="modal-btn ghost" id="goldCancel">Отмена</button>
+    </div>`;
+
+  const slider = overlay.querySelector('input[type=range]');
+  const amountEl = overlay.querySelector('.trade-amount');
+  const totalEl = overlay.querySelector('.trade-total');
+
+  function updateDisplays(){
+    const total = Math.floor(grams * goldPrice);
+    amountEl.textContent = grams.toFixed(3) + ' г';
+    totalEl.textContent = (mode === 'buy' ? 'Итого: ' : 'Получите: ') + fmt(total) + ' ₽';
+  }
+  updateDisplays();
+
+  slider.addEventListener('input', e => { grams = parseFloat(e.target.value); updateDisplays(); });
+
+  overlay.querySelector('#goldConfirm').addEventListener('click', () => {
+    if (mode === 'buy'){
+      const cost = Math.floor(grams * goldPrice);
+      if (cost <= state.money){ state.money -= cost; goldAmount += grams; sfxBuy(); saveGame(); }
+    } else {
+      const revenue = Math.floor(grams * goldPrice);
+      state.money += revenue;
+      goldAmount -= grams;
+      if (goldAmount < 0) goldAmount = 0;
+      sfxSell(); saveGame();
+    }
+    closeModal(overlay);
+  });
+  overlay.querySelector('#goldCancel').addEventListener('click', () => closeModal(overlay));
+
+  document.body.appendChild(overlay);
+}
+
+/* ============================================================
+   ДЕЙСТВИЯ
+   ============================================================ */
+function sellLine(lineIdx, px, py){
+  const line = state.lines[lineIdx];
+  if (!line || line.stock < 1) return;
+  initAudio();
+  const amount = Math.floor(line.stock) * getSellPrice(line);
+  state.money += amount; state.totalRevenue += amount;
+  line.stock = 0;
+  sfxSell(); showCoinBurst(px, py, 6);
+  flashMoney(); checkRankUp(); saveGame();
+}
+function buySpeed(lineIdx){
+  const line = state.lines[lineIdx];
+  if (!line || line.speedLevel >= MAX_LEVEL) return;
+  const c = getSpeedCost(line);
+  if (state.money < c) return;
+  initAudio(); state.money -= c; line.speedLevel++;
+  sfxUpgrade(); saveGame();
+}
+function buyQuality(lineIdx){
+  const line = state.lines[lineIdx];
+  if (!line || line.qualityLevel >= MAX_LEVEL) return;
+  const c = getQualityCost(line);
+  if (state.money < c) return;
+  initAudio(); state.money -= c; line.qualityLevel++;
+  sfxUpgrade(); saveGame();
+}
+function buyUnlock(productId){
+  const prod = getProduct(productId);
+  if (!prod || state.unlockedProducts.includes(productId)) return;
+  if (state.money < prod.unlockCost){ showToast(`🔒 Не хватает ${fmt(prod.unlockCost - state.money)} ₽`, 2000, 'warn'); return; }
+  initAudio();
+  state.money -= prod.unlockCost;
+  state.unlockedProducts.push(productId);
+  state.lines.push({ productId, speedLevel:0, qualityLevel:0, stock:0, progress:0 });
+  sfxUnlock(); showToast(`🏭 Открыто: ${prod.name}!`, 3000, 'success');
+  showCoinBurst(innerWidth/2, innerHeight/2, 16);
+  buildFactoryUI();
+  if (currentTab === 'upgrades') buildUpgradesUI();
+  flashMoney(); saveGame();
+}
+function buyAutoSell(){
+  if (state.autoSell || state.money < AUTO_SELL_COST) return;
+  initAudio(); state.money -= AUTO_SELL_COST; state.autoSell = true;
+  sfxUnlock(); showToast('🤖 Авто-продажа!', 2400, 'success'); saveGame();
+}
+function buyMarketing(){
+  if (state.marketingLevel >= MARKETING_COSTS.length) return;
+  const c = MARKETING_COSTS[state.marketingLevel];
+  if (state.money < c) return;
+  initAudio(); state.money -= c; state.marketingLevel++;
+  sfxUpgrade(); saveGame();
+}
+function buyStock(ticker, count){
+  const s = stocks.find(st => st.ticker === ticker);
+  if (!s) return;
+  const cost = Math.floor(s.price * 1.01 * count);
+  if (state.money < cost || count < 1) return;
+  state.money -= cost;
+  const h = holdings[ticker] || { count: 0, avgPrice: 0 };
+  const newCount = h.count + count;
+  holdings[ticker] = { count: newCount, avgPrice: (h.avgPrice * h.count + s.price * count) / newCount };
+  sfxBuy(); showToast(`📈 Куплено ${count} ${ticker}`, 1500, 'success'); saveGame();
+}
+function sellStock(ticker, count){
+  const s = stocks.find(st => st.ticker === ticker);
+  const h = holdings[ticker];
+  if (!s || !h || h.count < count || count < 1) return;
+  const revenue = Math.floor(s.price * 0.99 * count);
+  state.money += revenue;
+  const profit = revenue - h.avgPrice * count;
+  if (profit > 0) state.totalRevenue += profit;
+  h.count -= count;
+  if (h.count === 0) delete holdings[ticker];
+  sfxSell(); showToast(`💸 Продано ${count} ${ticker}`, 1500, 'success'); checkRankUp(); saveGame();
+}
+function buyCrypto(ticker, count){
+  const c = crypto.find(cr => cr.ticker === ticker);
+  if (!c) return;
+  const cost = Math.floor(c.price * 1.005 * count);
+  if (state.money < cost || count <= 0) return;
+  state.money -= cost;
+  const h = cryptoHoldings[ticker] || { count: 0, avgPrice: 0 };
+  const newCount = h.count + count;
+  cryptoHoldings[ticker] = { count: newCount, avgPrice: (h.avgPrice * h.count + c.price * count) / newCount };
+  sfxBuy(); showToast(`₿ Куплено ${count.toFixed(4)} ${ticker}`, 1500, 'success'); saveGame();
+}
+function sellCrypto(ticker, count){
+  const c = crypto.find(cr => cr.ticker === ticker);
+  const h = cryptoHoldings[ticker];
+  if (!c || !h || h.count < count || count <= 0) return;
+  const revenue = Math.floor(c.price * 0.995 * count);
+  state.money += revenue;
+  const profit = revenue - h.avgPrice * count;
+  if (profit > 0) state.totalRevenue += profit;
+  h.count -= count;
+  if (h.count < 0.00001) delete cryptoHoldings[ticker];
+  sfxSell(); showToast(`💸 Продано ${count.toFixed(4)} ${ticker}`, 1500, 'success'); checkRankUp(); saveGame();
+}
+function openDeposit(depId, amount){
+  const dep = DEPOSITS.find(d => d.id === depId);
+  if (!dep || amount < dep.minAmount || amount > state.money) return;
+  state.money -= amount;
+  const now = Date.now();
+  activeDeposits.push({ id: depId, name: dep.name, amount, rate: dep.rate, startedAt: now, endsAt: now + dep.duration * 1000 });
+  sfxBuy(); showToast(`🏦 Вклад открыт на ${fmt(amount)} ₽`, 2000, 'success');
+  buildInvestUI(); saveGame();
+}
+function buyBond(bondId, amount){
+  const bnd = BONDS.find(b => b.id === bondId);
+  if (!bnd || amount < bnd.minAmount || amount > state.money) return;
+  state.money -= amount;
+  const now = Date.now();
+  activeBonds.push({ id: bondId, name: bnd.name, amount, rate: bnd.rate, startedAt: now, endsAt: now + bnd.duration * 1000 });
+  sfxBuy(); showToast(`📊 Куплено облигаций на ${fmt(amount)} ₽`, 2000, 'success');
+  buildInvestUI(); saveGame();
+}
+function checkRankUp(){
+  const newRank = getPlayerRank();
+  if (newRank < cachedRank){
+    cachedRank = newRank;
+    flashRank(false);
+    if (newRank === 1 && !state.victoryShown){ state.victoryShown = true; setTimeout(showVictory, 500); }
+    else sfxRankUp();
+  }
+}
+
+function checkMaturities(){
+  const now = Date.now();
+  let changed = false;
+  for (let i = activeDeposits.length - 1; i >= 0; i--){
+    if (now >= activeDeposits[i].endsAt){
+      const d = activeDeposits[i];
+      const payout = Math.floor(d.amount * (1 + d.rate));
+      state.money += payout;
+      state.totalRevenue += payout - d.amount;
+      activeDeposits.splice(i, 1);
+      showToast(`🏦 Вклад погашен: +${fmt(payout)} ₽`, 3000, 'success');
+      sfxSell(); flashMoney(); checkRankUp(); changed = true;
+    }
+  }
+  for (let i = activeBonds.length - 1; i >= 0; i--){
+    if (now >= activeBonds[i].endsAt){
+      const b = activeBonds[i];
+      const payout = Math.floor(b.amount * (1 + b.rate));
+      state.money += payout;
+      state.totalRevenue += payout - b.amount;
+      activeBonds.splice(i, 1);
+      showToast(`📊 Облигации погашены: +${fmt(payout)} ₽`, 3000, 'success');
+      sfxSell(); flashMoney(); checkRankUp(); changed = true;
+    }
+  }
+  if (changed){
+    buildInvTabs();
+    if (currentTab === 'invest' && !modalOpen) buildInvestUI();
+    saveGame();
+  }
+}
+
+/* ============================================================
+   РЕЙТИНГ
+   ============================================================ */
+function buildRatingUI(){
+  const container = document.getElementById('ratingContainer');
+  const all = competitors.map((c, i) => ({ name: c.name, score: c.score, isPlayer: false, origIdx: i, trend: c.trend, lastPct: c.lastPct }));
+  all.push({ name: 'Улыбка ПМ', score: state.totalRevenue, isPlayer: true, origIdx: -1, trend: 0 });
+  all.sort((a, b) => b.score - a.score);
+  let html = '<div class="rating-list">';
+  all.forEach((item, i) => {
+    const rank = i + 1;
+    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '#' + rank;
+    const grew = !item.isPlayer && grewIdx.has(item.origIdx) && grewFade > 0;
+    let trendHtml = '';
+    if (!item.isPlayer && item.trend !== 0 && item.lastPct !== 0){
+      const pct = Math.abs(item.lastPct).toFixed(2);
+      trendHtml = item.trend > 0 ? `<span class="rating-trend up">▲${pct}%</span>` : `<span class="rating-trend down">▼${pct}%</span>`;
+    }
+    const grewCls = grew ? (item.trend > 0 ? 'grew-up' : 'grew-down') : '';
+    html += `<div class="rating-row ${item.isPlayer ? 'player' : ''} ${grewCls}">
+      <div class="rating-rank">${medal}</div>
+      <div class="rating-name">${item.name}${item.isPlayer ? ' (вы)' : ''}</div>
+      ${trendHtml}
+      <div class="rating-score">${fmt(item.score)}</div>
+    </div>`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+/* ============================================================
+   ЭФФЕКТЫ
+   ============================================================ */
+function flashMoney(){
+  const el = document.getElementById('moneyStat');
+  if (!el) return;
+  el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+  setTimeout(() => el.classList.remove('flash'), 400);
+}
+let toastTimeout = null;
+function showToast(text, duration, type){
+  const old = document.querySelector('.toast'); if (old) old.remove();
+  const el = document.createElement('div');
+  el.className = 'toast' + (type === 'warn' ? ' warn' : type === 'success' ? ' success' : '');
+  el.textContent = text;
+  document.body.appendChild(el);
+  if (toastTimeout) clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => el.remove(), duration || 3000);
+}
+function flashRank(isDown){
+  const el = document.getElementById('rankBadge');
+  if (!el) return;
+  el.classList.remove('up', 'down'); void el.offsetWidth;
+  el.classList.add(isDown ? 'down' : 'up');
+  setTimeout(() => el.classList.remove('up', 'down'), 800);
+}
+function showVictory(){
+  sfxVictory();
+  const el = document.createElement('div');
+  el.className = 'modal-overlay';
+  el.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-emoji">🏆</div>
+      <div class="modal-title">Вы — №1!</div>
+      <div class="modal-text">«Улыбка ПМ» обогнала «Пласт-М» и «Упакс-Юнити» и стала лучшим полимерным заводом Перми!</div>
+      <div class="modal-stats"><span>Всего заработано</span><strong>${fmt(state.totalRevenue)} ₽</strong></div>
+      <button class="modal-btn" id="victoryBtn">Продолжить</button>
+    </div>`;
+  document.body.appendChild(el);
+  document.getElementById('victoryBtn').addEventListener('click', () => el.remove());
+}
+
+/* ============================================================
+   ЦИКЛ
+   ============================================================ */
+function updateHeaderUI(){
+  const moneyEl = document.getElementById('moneyVal');
+  const totalEl = document.getElementById('totalVal');
+  const rankEl = document.getElementById('rankVal');
+  const timerEl = document.getElementById('rankTimer');
+  if (moneyEl) moneyEl.textContent = fmt(state.money);
+  if (totalEl) totalEl.textContent = fmt(state.totalRevenue);
+  if (rankEl){
+    const newRank = getPlayerRank();
+    if (newRank !== cachedRank){ const isDown = newRank > cachedRank; cachedRank = newRank; flashRank(isDown); }
+    rankEl.textContent = newRank;
+  }
+  if (timerEl){
+    const s = Math.ceil(growthTimer);
+    const m = Math.floor(s / 60), sec = s % 60;
+    timerEl.textContent = `${m}:${sec.toString().padStart(2,'0')}`;
+    timerEl.classList.toggle('soon', s <= 30 && s > 15);
+    timerEl.classList.toggle('urgent', s <= 15);
+  }
+  const invBadge = document.getElementById('invBadge');
+  if (invBadge){
+    const total = activeDeposits.length + activeBonds.length;
+    if (total > 0){ invBadge.style.display = 'flex'; invBadge.textContent = total; }
+    else invBadge.style.display = 'none';
+  }
+}
+
+function tick(t){
+  requestAnimationFrame(tick);
+  const dt = Math.min((t - lastT) / 1000, 0.2);
+  lastT = t;
+
+  for (const line of state.lines){
+    const time = getLineTime(line);
+    line.progress += dt / time;
+    while (line.progress >= 1){ line.progress -= 1; line.stock += 1; }
+  }
+  let sold = false;
+  if (state.autoSell){
+    for (const line of state.lines){
+      if (line.stock >= 1){
+        const amount = Math.floor(line.stock) * getSellPrice(line);
+        state.money += amount; state.totalRevenue += amount;
+        line.stock = 0; sold = true;
+      }
+    }
+  }
+  if (sold) checkRankUp();
+
+  if (savingsBalance > 0){
+    const growth = savingsBalance * SAVINGS_RATE_PER_MIN * (dt / 60);
+    savingsBalance += growth;
+    state.totalRevenue += growth;
+  }
+
+  growthTimer -= dt;
+  if (growthTimer <= 0){ growthTimer += GROWTH_INTERVAL; growCompetitors(); }
+  if (grewFade > 0) grewFade -= dt;
+
+  if (performance.now() - lastCryptoUpdate > CRYPTO_UPDATE_INTERVAL){
+    lastCryptoUpdate = performance.now();
+    updateCrypto();
+  }
+
+  checkMaturities();
+  maybeTriggerEvent();
+  updateEventState();
+
+  updateFx(dt);
+  renderFx();
+  updateHeaderUI();
+  if (currentTab === 'factory') updateFactoryUI();
+  if (currentTab === 'upgrades') updateUpgradesUI();
+  if (currentTab === 'invest' && !modalOpen && t - lastInvestRender > 1000){
+    lastInvestRender = t;
+    buildInvestUI();
+  }
+
+  if (t - lastSaveCheck > 10000){ lastSaveCheck = t; saveGame(); }
+}
+
+/* ============================================================
+   ИНИЦИАЛИЗАЦИЯ
+   ============================================================ */
+function showOfflineEarnings(seconds, amount){
+  const el = document.createElement('div');
+  el.className = 'modal-overlay';
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const timeStr = hours > 0 ? `${hours}ч ${mins}м` : `${mins}м`;
+  el.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-emoji">💰</div>
+      <div class="modal-title">С возвращением!</div>
+      <div class="modal-text">Пока вас не было (${timeStr}), завод работал и принёс прибыль.</div>
+      <div class="modal-stats"><span>Офлайн-доход</span><strong>+${fmt(amount)} ₽</strong></div>
+      <button class="modal-btn" id="offlineBtn">Забрать</button>
+    </div>`;
+  document.body.appendChild(el);
+  document.getElementById('offlineBtn').addEventListener('click', () => {
+    state.money += amount; state.totalRevenue += amount;
+    el.remove(); flashMoney(); sfxSell();
+  });
+}
+
+function init(){
+  competitors = generateCompetitors();
+  resizeFx();
+
+  const saved = loadGame();
+
+  if (saved && saved.competitorScores && saved.competitorScores.length === competitors.length){
+    for (let i = 0; i < competitors.length; i++) competitors[i].score = saved.competitorScores[i];
+  }
+
+  initStocks(saved ? saved.itScores : null);
+  initCrypto();
+
+  if (saved && saved.lines){
+    state = {
+      money: saved.money, totalRevenue: saved.totalRevenue,
+      lines: saved.lines, unlockedProducts: saved.unlockedProducts,
+      autoSell: saved.autoSell, marketingLevel: saved.marketingLevel,
+      victoryShown: saved.victoryShown, eventPriceMult: 1, eventSpeedMult: 1
+    };
+    if (typeof saved.growthTimer === 'number') growthTimer = Math.max(1, Math.min(GROWTH_INTERVAL, saved.growthTimer));
+    if (saved.holdings) holdings = saved.holdings;
+    if (saved.cryptoHoldings) cryptoHoldings = saved.cryptoHoldings;
+    if (typeof saved.savingsBalance === 'number') savingsBalance = saved.savingsBalance;
+    if (typeof saved.goldPrice === 'number') goldPrice = saved.goldPrice;
+    if (typeof saved.goldAmount === 'number') goldAmount = saved.goldAmount;
+    if (saved.activeDeposits) activeDeposits = saved.activeDeposits;
+    if (saved.activeBonds) activeBonds = saved.activeBonds;
+    if (saved.cryptoPrices && saved.cryptoPrices.length === crypto.length){
+      for (let i = 0; i < crypto.length; i++){
+        crypto[i].prevPrice = crypto[i].price;
+        crypto[i].price = saved.cryptoPrices[i];
+        crypto[i].lastChangePct = ((crypto[i].price - crypto[i].prevPrice) / crypto[i].prevPrice) * 100;
+      }
+    }
+    const off = calculateOffline(saved, Date.now());
+    if (off.amount > 0) lastOfflineEarnings = off;
+    if (saved.savingsBalance > 0 && saved.savedAt){
+      const mins = Math.min((Date.now() - saved.savedAt) / 60000, 240);
+      if (mins > 1){
+        const growth = savingsBalance * (Math.pow(1 + SAVINGS_RATE_PER_MIN, mins) - 1);
+        savingsBalance += growth;
+        state.totalRevenue += growth;
+      }
+    }
+  } else {
+    state = initState();
+  }
+
+  cachedRank = getPlayerRank();
+  scheduleNextEvent();
+  lastCryptoUpdate = performance.now();
+
+  buildFactoryUI();
+  buildUpgradesUI();
+  buildInvTabs();
+  buildInvestUI();
+  buildRatingUI();
+  updateHeaderUI();
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (modalOpen) return;
+      const tab = btn.dataset.tab;
+      currentTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + tab));
+      if (tab === 'rating') buildRatingUI();
+      if (tab === 'upgrades') updateUpgradesUI();
+      if (tab === 'invest'){ buildInvTabs(); buildInvestUI(); }
+    });
+  });
+
+  if (!saved){
+    setTimeout(() => showToast('👋 Добро пожаловать! У вас 3 млн ₽ — откройте первое производство', 4500), 500);
+  } else if (lastOfflineEarnings.amount > 0){
+    setTimeout(() => showOfflineEarnings(lastOfflineEarnings.seconds, lastOfflineEarnings.amount), 400);
+  } else {
+    setTimeout(() => showToast('💾 Прогресс восстановлен', 2000), 400);
+  }
+
+  window.addEventListener('beforeunload', saveGame);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(); });
+  window.addEventListener('pagehide', saveGame);
+  window.addEventListener('resize', () => { resizeFx(); saveGame(); });
+
+  requestAnimationFrame(tick);
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>
